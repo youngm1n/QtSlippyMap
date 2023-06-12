@@ -1,4 +1,4 @@
-QT       += core gui opengl openglwidgets
+QT       += core gui opengl openglwidgets network
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
@@ -11,10 +11,13 @@ CONFIG += c++17
 SOURCES += \
     main.cpp \
     mainwindow.cpp \
+    maptileloader.cpp \
     viewermap.cpp
 
 HEADERS += \
+    global.h \
     mainwindow.h \
+    maptileloader.h \
     viewermap.h
 
 FORMS += \
