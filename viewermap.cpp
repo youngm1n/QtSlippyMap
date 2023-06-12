@@ -94,13 +94,15 @@ void ViewerMap::paintEvent(QPaintEvent *event)
 
     QPainter p;
     p.begin(this);
-
-    p.setPen(Qt::red);
+    p.fillRect(rect(), Qt::black);
 
     for (QMap<QString, QRect>::iterator iter = mapTiles[zoom].begin(); iter != mapTiles[zoom].end(); ++iter) {
         p.drawImage(iter.value(), QImage(iter.key()));
-        p.drawRect(iter.value());
     }
+
+    p.setPen(Qt::red);
+    p.drawLine(0, rect().center().y(), width(), rect().center().y());
+    p.drawLine(rect().center().x(), 0, rect().center().x(), height());
 
     p.end();
 }
@@ -129,8 +131,10 @@ void ViewerMap::wheelEvent(QWheelEvent *event)
         zoom--;
     }
 
-    if (zoom < 0)       zoom = 0;
+    if (zoom < 4)       zoom = 4;
     else if (zoom > 19) zoom = 19;
+
+    qDebug() << "Zoom: " << zoom;
 
     updateMapTiles();
     update();

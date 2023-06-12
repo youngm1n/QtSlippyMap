@@ -9,7 +9,7 @@
 MapTileLoader::MapTileLoader(QObject *parent)
     : QObject{parent}
 {
-    QDir(MAP_LOCAL_ROOT).removeRecursively();
+//    QDir(MAP_LOCAL_ROOT).removeRecursively();
     QDir().mkdir(MAP_LOCAL_ROOT);
     for (int zoom = 0; zoom < 20; zoom++) {
         mapLonSizePerZoom.insert(zoom, 360.0 / pow(2, zoom));
@@ -27,18 +27,50 @@ void MapTileLoader::setUrlTileMap(const QString &newUrlTileMap)
 
 void MapTileLoader::getMapFromCoordinate(double lat, double lon, int zoom, QRect rect)
 {
-    auto tileCenter = QPoint(longitudeToTileX(lon, zoom), latitudeToTileY(lat, zoom));
-    auto tileCount = QPoint(ceil(rect.width() / 2.0 / static_cast<double>(MAP_TILE_PIX_SIZE)),
-                              ceil(rect.height() / 2.0 / static_cast<double>(MAP_TILE_PIX_SIZE)));
-    auto tileStart = tileCenter - tileCount;
-    auto tileEnd = tileCenter + tileCount;
+    int maxTileNo = static_cast<int>(pow(2, zoom)) - 1;
+    auto tileNoCenter = QPoint(longitudeToTileX(lon, zoom), latitudeToTileY(lat, zoom));
+    auto tileNoCount = QPoint(ceil(rect.width() / 2.0 / static_cast<double>(MAP_TILE_PIX_SIZE)) + 1,
+                              ceil(rect.height() / 2.0 / static_cast<double>(MAP_TILE_PIX_SIZE)) + 1);
+    auto tileNoStart = tileNoCenter - tileNoCount;
+    auto tileNoEnd = tileNoCenter + tileNoCount;
 
-    auto scrStart = QPoint(rect.center() - QPoint(tileCount.x() * MAP_TILE_PIX_SIZE, tileCount.y() * MAP_TILE_PIX_SIZE));
+    if (tileNoStart.x() < 0) {
+        tileNoStart.setX(0);
+    }
+    if (tileNoStart.x() > maxTileNo) {
+        tileNoStart.setX(maxTileNo);
+    }
+    if (tileNoStart.y() < 0) {
+        tileNoStart.setY(0);
+    }
+    if (tileNoStart.y() > maxTileNo) {
+        tileNoStart.setY(maxTileNo);
+    }
+
+    if (tileNoEnd.x() < 0) {
+        tileNoEnd.setX(0);
+    }
+    if (tileNoEnd.x() > maxTileNo) {
+        tileNoEnd.setX(maxTileNo);
+    }
+    if (tileNoEnd.y() < 0) {
+        tileNoEnd.setY(0);
+    }
+    if (tileNoEnd.y() > maxTileNo) {
+        tileNoEnd.setY(maxTileNo);
+    }
+
+    auto tileRealCenter = QRectF(QPointF(tileXtoLongitude(tileNoCenter.x(), zoom), tileYtoLatitude(tileNoCenter.y(), zoom)),
+                                 QPointF(tileXtoLongitude(tileNoCenter.x() + 1, zoom), tileYtoLatitude(tileNoCenter.y() + 1, zoom)));
+
+    auto scrDelta = QPoint((lon - tileRealCenter.x()) / tileRealCenter.width() * MAP_TILE_PIX_SIZE,
+                           (lat - tileRealCenter.y()) / tileRealCenter.height() * MAP_TILE_PIX_SIZE);
+    auto scrStart = QPoint(rect.center() - QPoint(tileNoCount.x() * MAP_TILE_PIX_SIZE, tileNoCount.y() * MAP_TILE_PIX_SIZE)) - scrDelta;
 
     auto scrY = scrStart.y();
-    for (int y = tileStart.y(); y < tileEnd.y(); y++) {
+    for (int y = tileNoStart.y(); y < tileNoEnd.y(); y++) {
         auto scrX = scrStart.x();
-        for (int x = tileStart.x(); x < tileEnd.x(); x++) {
+        for (int x = tileNoStart.x(); x < tileNoEnd.x(); x++) {
             getMapTile(zoom, x, y, QRect(scrX, scrY, MAP_TILE_PIX_SIZE, MAP_TILE_PIX_SIZE));
             scrX += MAP_TILE_PIX_SIZE;
         }
@@ -134,7 +166,8 @@ void MapTileLoader::finishedTileDownload(QNetworkReply *reply)
         }
     }
     else {
-        qDebug() << reply->errorString();
+        qDebug() << nam->property("URL").toString();
+        qDebug() << "Reply Error: " << reply->errorString();
     }
     reply->deleteLater();
     disconnect(nam, &QNetworkAccessManager::finished, this, &MapTileLoader::finishedTileDownload);
