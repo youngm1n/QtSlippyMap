@@ -8,6 +8,8 @@
 
 #include "global.h"
 
+#define MAX_ZOOM_COUNT  20
+
 class ViewerMap : public QOpenGLWidget
 {
     Q_OBJECT
@@ -18,9 +20,6 @@ public:
 
 private:
     void updateMapTiles();
-    void convScreenPosToLatLon(QPointF pos, double &lat, double &lon);
-    void convScreenPosToLatLon(QPointF pos, double &lat, double &lon, double &dist, double &bearing);
-    void getDestinationLatLon(double srcLat, double srcLon, double distance, double bearing, double &dstLat, double &dstLon);
 
 private slots:
     void downloadedMapTile(QString imgFilePath, QRect rectScr);
@@ -30,12 +29,10 @@ private:
     double currentLat;
     double currentLon;
 
-    double realDistPerScrPix;
-    int realRadius;     // Unit: meter
+    QRect rectMapDraw; // x2 size for rotating
+    int zoom;
 
-    QRectF rectMapDraw; // x2 size for rotating
-
-    QMap<QString, QRect> mapTiles;
+    QMap<QString, QRect> mapTiles[MAX_ZOOM_COUNT];
 
     // QObject interface
 public:

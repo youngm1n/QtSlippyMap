@@ -9,10 +9,14 @@
 MapTileLoader::MapTileLoader(QObject *parent)
     : QObject{parent}
 {
+    QDir(MAP_LOCAL_ROOT).removeRecursively();
     QDir().mkdir(MAP_LOCAL_ROOT);
     for (int zoom = 0; zoom < 20; zoom++) {
         mapLonSizePerZoom.insert(zoom, 360.0 / pow(2, zoom));
     }
+
+    connect(&timerNamReq, &QTimer::timeout, this, &MapTileLoader::timeoutNamReq);
+    timerNamReq.start(10);
 }
 
 void MapTileLoader::setUrlTileMap(const QString &newUrlTileMap)
@@ -21,30 +25,24 @@ void MapTileLoader::setUrlTileMap(const QString &newUrlTileMap)
     urlTileMap = newUrlTileMap;
 }
 
-void MapTileLoader::getMapFromCoordinate(double lonLeft, double latTop, double lonRight, double latBottom, QRectF rect)
+void MapTileLoader::getMapFromCoordinate(double lat, double lon, int zoom, QRect rect)
 {
-    auto xTileCount = ceil(rect.width() / static_cast<double>(MAP_TILE_PIX_SIZE));
-    auto lonGap = (lonRight - lonLeft) / xTileCount;
+    auto tileCenter = QPoint(longitudeToTileX(lon, zoom), latitudeToTileY(lat, zoom));
+    auto tileCount = QPoint(ceil(rect.width() / 2.0 / static_cast<double>(MAP_TILE_PIX_SIZE)),
+                              ceil(rect.height() / 2.0 / static_cast<double>(MAP_TILE_PIX_SIZE)));
+    auto tileStart = tileCenter - tileCount;
+    auto tileEnd = tileCenter + tileCount;
 
-    // Find Proper Zoom Level
-    int zoom = 0;
-    for (QMap<int, double>::iterator iter = mapLonSizePerZoom.begin(); iter != mapLonSizePerZoom.end(); ++iter) {
-        if (lonGap > iter.value()) {
-            zoom = iter.key();
-            break;
+    auto scrStart = QPoint(rect.center() - QPoint(tileCount.x() * MAP_TILE_PIX_SIZE, tileCount.y() * MAP_TILE_PIX_SIZE));
+
+    auto scrY = scrStart.y();
+    for (int y = tileStart.y(); y < tileEnd.y(); y++) {
+        auto scrX = scrStart.x();
+        for (int x = tileStart.x(); x < tileEnd.x(); x++) {
+            getMapTile(zoom, x, y, QRect(scrX, scrY, MAP_TILE_PIX_SIZE, MAP_TILE_PIX_SIZE));
+            scrX += MAP_TILE_PIX_SIZE;
         }
-    }
-
-    if (zoom > 0) {
-        // Generated temp map (without cropping)
-        QPoint tileNoStart(longitudeToTileX(lonLeft, zoom), latitudeToTileY(latTop, zoom));
-        QPoint tileNoEnd(longitudeToTileX(lonRight, zoom) + 1, latitudeToTileY(latBottom, zoom) + 1);
-
-        for (int y = tileNoStart.y(); y <= tileNoEnd.y(); y++) {
-            for (int x = tileNoStart.x(); x <= tileNoEnd.x(); x++) {
-                getMapTile(zoom, x, y);
-            }
-        }
+        scrY += MAP_TILE_PIX_SIZE;
     }
 }
 
@@ -70,14 +68,12 @@ double MapTileLoader::tileYtoLatitude(int y, int zoom)
     return 180.0 / M_PI * atan(0.5 * (exp(n) - exp(-n)));
 }
 
-bool MapTileLoader::getMapTile(int zoom, int x, int y)
+bool MapTileLoader::getMapTile(int zoom, int x, int y, QRect rectScr)
 {
-    bool ret = false;
-    QString fileDir = QString("/%1/%2").arg(zoom).arg(x);
-    QString fileName = QString("/%1.png").arg(y);
-    QString fileFullPath = MAP_LOCAL_ROOT + fileDir + fileName;
-
-    QRect rectScr;
+    auto ret = false;
+    auto fileDir = QString("/%1/%2").arg(zoom).arg(x);
+    auto fileName = QString("/%1.png").arg(y);
+    auto fileFullPath = MAP_LOCAL_ROOT + fileDir + fileName;
 
     if (!QDir().exists(MAP_LOCAL_ROOT + fileDir)) {
         if (!QDir().mkpath(MAP_LOCAL_ROOT + fileDir)) {
@@ -95,16 +91,31 @@ bool MapTileLoader::getMapTile(int zoom, int x, int y)
 
         auto *nam = new QNetworkAccessManager(this);
         nam->setProperty("PATH", fileFullPath);
+        nam->setProperty("URL", url);
         nam->setProperty("SCREEN_RECT", rectScr);
         connect(nam, &QNetworkAccessManager::finished, this, &MapTileLoader::finishedTileDownload);
+        mutexNamReq.lock();
+        nams.push_back(nam);
+        mutexNamReq.unlock();
+    }
+
+    return ret;
+}
+
+void MapTileLoader::timeoutNamReq()
+{
+    mutexNamReq.lock();
+
+    if (!nams.isEmpty()) {
+        auto nam = nams.takeFirst();
 
         QNetworkRequest req;
-        req.setUrl(QUrl(url));
+        req.setUrl(QUrl(nam->property("URL").toString()));
         req.setRawHeader("User-Agent", "The Qt Company (Qt) Graphics Dojo 1.0");
         nam->get(req);
     }
 
-    return ret;
+    mutexNamReq.unlock();
 }
 
 void MapTileLoader::finishedTileDownload(QNetworkReply *reply)
@@ -126,5 +137,5 @@ void MapTileLoader::finishedTileDownload(QNetworkReply *reply)
         qDebug() << reply->errorString();
     }
     reply->deleteLater();
-//    disconnect(nam, &QNetworkAccessManager::finished, this, &MapTileLoader::finishedTileDownload);
+    disconnect(nam, &QNetworkAccessManager::finished, this, &MapTileLoader::finishedTileDownload);
 }

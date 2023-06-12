@@ -7,8 +7,7 @@
 ViewerMap::ViewerMap(QWidget *parent) : QOpenGLWidget(parent)
 {
     qApp->installEventFilter(this);
-    realDistPerScrPix = 0;
-    realRadius = 50000; // 50km
+    zoom = 10;
 
     connect(&mapTileLoader, &MapTileLoader::downloadedMapTile, this, &ViewerMap::downloadedMapTile);
 }
@@ -25,63 +24,54 @@ void ViewerMap::resizeGL(int w, int h)
 
 void ViewerMap::updateMapTiles()
 {
-    double lonLeft, latTop;
-    double lonRight, latBottom;
-
 //    float radius = (width() > height() ? width() : height()) / 2.0f;
 //    radius = sqrt(radius * radius + radius * radius) * 2;
 //    rectMapDraw.setSize(QSize(radius, radius));
-    rectMapDraw.setSize(rect().size());
-    rectMapDraw.moveCenter(rect().center());
+    rectMapDraw = rect();
 
-    // Real distance per one screen pixel
-    realDistPerScrPix = static_cast<double>(realRadius) / (static_cast<double>(height()) /2.0);
-
-    // Convert screen pos of top-left and bottom-right to lat/lon
-    convScreenPosToLatLon(rectMapDraw.topLeft(), latTop, lonLeft);
-    convScreenPosToLatLon(rectMapDraw.bottomRight(), latBottom, lonRight);
-
-    mapTileLoader.getMapFromCoordinate(lonLeft, latTop, lonRight, latBottom, rectMapDraw);
+    mapTileLoader.getMapFromCoordinate(currentLat, currentLon, zoom, rectMapDraw);
 }
 
-void ViewerMap::convScreenPosToLatLon(QPointF pos, double &lat, double &lon)
-{
-    double dist = 0, bearing = 0;
-    convScreenPosToLatLon(pos, lat, lon, dist, bearing);
-}
+//void ViewerMap::convScreenPosToLatLon(QPointF pos, double &lat, double &lon)
+//{
+//    double dist = 0, bearing = 0;
+//    convScreenPosToLatLon(pos, lat, lon, dist, bearing);
+//}
 
-void ViewerMap::convScreenPosToLatLon(QPointF pos, double &lat, double &lon, double &dist, double &bearing)
-{
-    dist = sqrt((pos.x() - rect().center().x()) * (pos.x() - rect().center().x()) + (pos.y() - rect().center().y()) * (pos.y() - rect().center().y())) * realDistPerScrPix;
-    bearing = atan2(pos.y() - rect().center().y(), pos.x() - rect().center().x()) + M_PI / 2;
-    if (bearing < 0) {
-        bearing += (M_PI * 2);
-    }
+//void ViewerMap::convScreenPosToLatLon(QPointF pos, double &lat, double &lon, double &dist, double &bearing)
+//{
+//    dist = sqrt((pos.x() - rect().center().x()) * (pos.x() - rect().center().x()) + (pos.y() - rect().center().y()) * (pos.y() - rect().center().y())) * realDistPerScrPix;
+//    bearing = atan2(pos.y() - rect().center().y(), pos.x() - rect().center().x()) + M_PI / 2;
+//    if (bearing < 0) {
+//        bearing += (M_PI * 2);
+//    }
 
-    getDestinationLatLon(currentLat, currentLon, dist, bearing, lat, lon);
-}
+//    getDestinationLatLon(currentLat, currentLon, dist, bearing, lat, lon);
+//}
 
-void ViewerMap::getDestinationLatLon(double srcLat, double srcLon, double distance, double bearing, double &dstLat, double &dstLon)
-{
-    double angDist = distance / 6371000.0;
-    srcLat *= DegToRad;
-    srcLon *= DegToRad;
+//void ViewerMap::getDestinationLatLon(double srcLat, double srcLon, double distance, double bearing, double &dstLat, double &dstLon)
+//{
+//    double angDist = distance / 6371000.0;
+//    srcLat *= DegToRad;
+//    srcLon *= DegToRad;
 
-    dstLat = asin(sin(srcLat) * cos(angDist) + cos(srcLat) * sin(angDist) * cos(bearing));
+//    dstLat = asin(sin(srcLat) * cos(angDist) + cos(srcLat) * sin(angDist) * cos(bearing));
 
-    double forAtana = sin(bearing) * sin(angDist) * cos(srcLat);
-    double forAtanb = cos(angDist) - sin(srcLat) * sin(dstLat);
+//    double forAtana = sin(bearing) * sin(angDist) * cos(srcLat);
+//    double forAtanb = cos(angDist) - sin(srcLat) * sin(dstLat);
 
-    dstLon = srcLon + atan2(forAtana, forAtanb);
+//    dstLon = srcLon + atan2(forAtana, forAtanb);
 
-    dstLat *= RadToDeg;
-    dstLon *= RadToDeg;
-}
+//    dstLat *= RadToDeg;
+//    dstLon *= RadToDeg;
+//}
 
 void ViewerMap::downloadedMapTile(QString imgFilePath, QRect rectScr)
 {
-    mapTiles.insert(imgFilePath, rectScr);
-    update();
+    if (zoom < MAX_ZOOM_COUNT) {
+        mapTiles[zoom].insert(imgFilePath, rectScr);
+        update();
+    }
 }
 
 void ViewerMap::setCurrentLocation(double newCurrentLat, double newCurrentLon)
@@ -105,14 +95,12 @@ void ViewerMap::paintEvent(QPaintEvent *event)
     QPainter p;
     p.begin(this);
 
-    int count = 0;
-    for (QMap<QString, QRect>::iterator iter = mapTiles.begin(); iter != mapTiles.end(); ++iter) {
-        if (rect().contains(iter.value())) {
-            p.drawImage(iter.value(), QImage(iter.key()));
-            count++;
-        }
+    p.setPen(Qt::red);
+
+    for (QMap<QString, QRect>::iterator iter = mapTiles[zoom].begin(); iter != mapTiles[zoom].end(); ++iter) {
+        p.drawImage(iter.value(), QImage(iter.key()));
+        p.drawRect(iter.value());
     }
-    qDebug() << rect() << count << mapTiles.count();
 
     p.end();
 }
@@ -135,16 +123,16 @@ void ViewerMap::mouseDoubleClickEvent(QMouseEvent *event)
 void ViewerMap::wheelEvent(QWheelEvent *event)
 {
     if (event->angleDelta().y() > 0) {
-        realRadius -= 10000;
+        zoom++;
     }
     else {
-        realRadius += 10000;
+        zoom--;
     }
 
-    if (realRadius < 10000) {
-        realRadius = 10000;
-    }
+    if (zoom < 0)       zoom = 0;
+    else if (zoom > 19) zoom = 19;
 
     updateMapTiles();
+    update();
 }
 

@@ -8,8 +8,13 @@
 #include <QNetworkRequest>
 #include <QEventLoop>
 #include <QImage>
+#include <QTimer>
+#include <QQueue>
+#include <QMutex>
 
 #include "global.h"
+
+// https://wiki.openstreetmap.org/wiki/Slippy_map_tilenames
 
 class MapTileLoader : public QObject
 {
@@ -19,7 +24,7 @@ public:
 
     void setUrlTileMap(const QString &newUrlTileMap);
 
-    void getMapFromCoordinate(double lonLeft, double latTop, double lonRight, double latBottom, QRectF rect);
+    void getMapFromCoordinate(double lat, double lon, int zoom, QRect rect);
 
 private:
     int longitudeToTileX(double lon, int zoom);
@@ -27,10 +32,11 @@ private:
     double tileXtoLongitude(int x, int zoom);
     double tileYtoLatitude(int y, int zoom);
 
-    bool getMapTile(int zoom, int x, int y);
+    bool getMapTile(int zoom, int x, int y, QRect rectScr);
 
 private slots:
     void finishedTileDownload(QNetworkReply *reply);
+    void timeoutNamReq();
 
 signals:
     void downloadedMapTile(QString imgFilePath, QRect rectScr);
@@ -38,6 +44,10 @@ signals:
 private:
     QString urlTileMap;
     QMap<int, double> mapLonSizePerZoom;
+
+    QQueue<QNetworkAccessManager *> nams;
+    QTimer timerNamReq;
+    QMutex mutexNamReq;
 
 signals:
 
