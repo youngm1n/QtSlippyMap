@@ -11,15 +11,27 @@
 ViewerMap::ViewerMap(QWidget *parent) : QOpenGLWidget(parent)
 {
     qApp->installEventFilter(this);
+
+    mapTiles = nullptr;
     currentZoom = previousZoom = 10;
     dragMap = false;
 
     connect(&mapTileLoader, &MapTileLoader::downloadedMapTile, this, &ViewerMap::downloadedMapTile);
 }
 
-void ViewerMap::setUrlTileMap(const QString &newUrlTileMap)
+void ViewerMap::setInitTileMap(const QString &url, const int newMaxZoom)
 {
-    mapTileLoader.setUrlTileMap(newUrlTileMap);
+    maxZoom = newMaxZoom;
+    if (mapTiles) {
+        delete [] mapTiles;
+    }
+    mapTiles = new QMap<QString, QRect>[maxZoom];
+
+    mapTileLoader.setUrlTileMap(url);
+    updateMapTiles();
+    update();
+
+    qDebug() << "Server changed: " << url;
 }
 
 void ViewerMap::setCurrentLocation(float newCurrentLat, float newCurrentLon)
@@ -170,8 +182,8 @@ void ViewerMap::wheelEvent(QWheelEvent *event)
         currentZoom--;
     }
 
-    if (currentZoom < 4)       currentZoom = 4;
-    else if (currentZoom > 19) currentZoom = 19;
+    if (currentZoom < 4)            currentZoom = 4;
+    else if (currentZoom > maxZoom) currentZoom = maxZoom;
 
     if (previousZoom != currentZoom) {
         updateMapTiles();

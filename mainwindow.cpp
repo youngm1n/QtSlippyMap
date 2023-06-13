@@ -11,6 +11,14 @@ MainWindow::MainWindow(QWidget *parent)
 
 //    showMaximized();
 
+    // Set tile map server
+    ui->comboBoxTileMapUrl->addItem("https://tile.openstreetmap.org", 19);  // UserData = max zoom level
+    ui->comboBoxTileMapUrl->addItem("https://a.tile.openstreetmap.org", 19);
+    ui->comboBoxTileMapUrl->addItem("https://b.tile.openstreetmap.org", 19);
+    ui->comboBoxTileMapUrl->addItem("https://c.tile.openstreetmap.org", 19);
+    ui->comboBoxTileMapUrl->addItem("https://d.tile.openstreetmap.org", 19);
+    ui->comboBoxTileMapUrl->setCurrentIndex(0);
+
     // Coordinate type
     registerCoordinateWidget(ui->widgetCurrentLat);
     registerCoordinateWidget(ui->widgetCurrentLon);
@@ -21,8 +29,12 @@ MainWindow::MainWindow(QWidget *parent)
     setCoordType(COORD_TYPE_DEG);
 
     // Init tile map server
-    ui->openGLWidgetMapView->setUrlTileMap(ui->comboBoxTileMapUrl->currentText());
-    connect(ui->comboBoxTileMapUrl, &QComboBox::currentTextChanged, ui->openGLWidgetMapView, &ViewerMap::setUrlTileMap);
+    ui->openGLWidgetMapView->setInitTileMap(ui->comboBoxTileMapUrl->currentText(),
+                                            ui->comboBoxTileMapUrl->itemData(ui->comboBoxTileMapUrl->currentIndex()).toInt());
+    connect(ui->comboBoxTileMapUrl, &QComboBox::currentIndexChanged, this, [&](int index) {
+        ui->openGLWidgetMapView->setInitTileMap(ui->comboBoxTileMapUrl->currentText(),
+                                                ui->comboBoxTileMapUrl->itemData(index).toInt());
+    });
 
     // Init current location
     ui->widgetCurrentLat->setValue(24.458510f);

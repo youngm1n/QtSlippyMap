@@ -150,11 +150,6 @@
           <verstretch>0</verstretch>
          </sizepolicy>
         </property>
-        <item>
-         <property name="text">
-          <string>https://tile.openstreetmap.org</string>
-         </property>
-        </item>
        </widget>
       </item>
       <item row="0" column="0" colspan="3">

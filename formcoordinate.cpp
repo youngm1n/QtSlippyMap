@@ -20,7 +20,6 @@ FormCoordinate::FormCoordinate(QWidget *parent) :
         ui->spinBoxDeg->setValue(deg);
         ui->spinBoxMin->setValue(min);
         ui->doubleSpinBoxSec->setValue(sec);
-        qDebug() << "Deg: " << value;
     });
 }
 

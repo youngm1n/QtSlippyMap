@@ -6,15 +6,13 @@
 
 #include "maptileloader.h"
 
-#define MAX_ZOOM_COUNT  20
-
 class ViewerMap : public QOpenGLWidget
 {
     Q_OBJECT
 public:
     ViewerMap(QWidget *parent = nullptr);
 
-    void setUrlTileMap(const QString &newUrlTileMap);
+    void setInitTileMap(const QString &url, const int maxZoomLevel);
     void setCurrentLocation(float newCurrentLat, float newCurrentLon);
 
 private:
@@ -30,7 +28,7 @@ signals:
 private:
     // Map tile parameters
     MapTileLoader mapTileLoader;
-    QMap<QString, QRect> mapTiles[MAX_ZOOM_COUNT];
+    QMap<QString, QRect> *mapTiles;
 
     // Position (real lat/lon)
     QPointF centerLatLon;
@@ -41,6 +39,7 @@ private:
     // drawing parameters
     int currentZoom;
     int previousZoom;
+    int maxZoom;
     bool dragMap;
     QPoint dragMapStart;
 
