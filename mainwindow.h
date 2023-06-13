@@ -17,6 +17,9 @@ public:
     MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
 
+private slots:
+    void updateCurrentLocation(double latitude, double longitude);
+
 private:
     Ui::MainWindow *ui;
 };

@@ -14,6 +14,7 @@ MainWindow::MainWindow(QWidget *parent)
     connect(ui->comboBoxTileMapUrl, &QComboBox::currentTextChanged, ui->openGLWidgetMapView, &ViewerMap::setUrlTileMap);
 
     // Init current location
+    connect(ui->openGLWidgetMapView, &ViewerMap::updateCurrentLocation, this, &MainWindow::updateCurrentLocation);
     connect(ui->pushButtonUpdateLocation, &QPushButton::pressed, this, [this]() {
         ui->openGLWidgetMapView->setCurrentLocation(ui->lineEditCurrentLat->text().toDouble(),
                                                     ui->lineEditCurrentLon->text().toDouble());
@@ -24,4 +25,10 @@ MainWindow::MainWindow(QWidget *parent)
 MainWindow::~MainWindow()
 {
     delete ui;
+}
+
+void MainWindow::updateCurrentLocation(double latitude, double longitude)
+{
+    ui->lineEditCurrentLat->setText(QString("%1").arg(latitude, 0, 'f', 8, QLatin1Char('0')));
+    ui->lineEditCurrentLon->setText(QString("%1").arg(longitude, 0, 'f', 8, QLatin1Char('0')));
 }

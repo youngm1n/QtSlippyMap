@@ -20,21 +20,29 @@ public:
 
 private:
     void updateMapTiles();
+    QPointF convPixToCoord(QPoint pt);
 
 private slots:
-    void downloadedMapTile(QString imgFilePath, QRect rectScr);
+    void downloadedMapTile(QString imgFilePath, QRect rectScr, int zoom);
+
+signals:
+    void updateCurrentLocation(double latitude, double longitude);
 
 private:
+    // Map tile parameters
     MapTileLoader mapTileLoader;
+    QMap<QString, QRect> mapTiles[MAX_ZOOM_COUNT];
+
+    // Current position (real lat/lon)
     double currentLat;
     double currentLon;
+    QRectF rectCurrentLatLon;
 
-    QRect rectMapDraw; // x2 size for rotating
-    int zoomCurrent;
-    int zoomPrevious;
-    QMutex mutexZoom;
-
-    QMap<QString, QRect> mapTiles[MAX_ZOOM_COUNT];
+    // drawing parameters
+    int currentZoom;
+    int previousZoom;
+    bool dragMap;
+    QPoint dragMapStart;
 
     // QObject interface
 public:

@@ -11,17 +11,17 @@
 #include <QTimer>
 #include <QQueue>
 #include <QMutex>
-
-#include "global.h"
+#include <QThread>
 
 // https://wiki.openstreetmap.org/wiki/Slippy_map_tilenames
 
 class ImageDownloadReq
 {
 public:
-    explicit ImageDownloadReq(QString newFilePath, QRect newRect, QString url) {
+    explicit ImageDownloadReq(QString newFilePath, QRect newRect, int newZoom, QString url) {
         filePath = newFilePath;
         rect = newRect;
+        zoom = newZoom;
         req.setUrl(QUrl(url));
         req.setRawHeader("User-Agent", "The Qt Company (Qt) Graphics Dojo 1.0");
     }
@@ -29,12 +29,16 @@ public:
     QNetworkRequest getNetworkReq() { return req; }
     QString getFilePath()   { return filePath; }
     QRect getImgRect()      { return rect; }
+    int getZoom()           { return zoom; }
 
 private:
     QNetworkRequest req;
     QString filePath;
     QRect rect;
+    int zoom;
 };
+
+#define MAX_NAM_COUNT   30
 
 class MapTileLoader : public QObject
 {
@@ -43,7 +47,7 @@ public:
     explicit MapTileLoader(QObject *parent = nullptr);
 
     void setUrlTileMap(const QString &newUrlTileMap);
-    int startDownloadTiles(double lat, double lon, int zoom, QRect rect);
+    QRectF startDownloadTiles(double lat, double lon, int zoom, QRect rect);
 
 private:
     int longitudeToTileX(double lon, int zoom);
@@ -57,18 +61,17 @@ private slots:
     void timeoutDownloadQueue();
 
 signals:
-    void downloadedMapTile(QString imgFilePath, QRect rectScr);
+    void downloadedMapTile(QString imgFilePath, QRect rectImg, int zoom);
 
 private:
     QString urlTileMap;
     QMap<int, double> mapLonSizePerZoom;
 
-    QNetworkAccessManager nam;
+    QNetworkAccessManager nam[MAX_NAM_COUNT];   // Crashed, when the number is over 30 (windows is ok, but only linux)--> Why?
+    QTimer timerDownloadQue[MAX_NAM_COUNT];
     QQueue<ImageDownloadReq> queDownloadReq;
-    QTimer timerDownloadQue;
 
 signals:
-
 };
 
 #endif // MAPTILELOADER_H

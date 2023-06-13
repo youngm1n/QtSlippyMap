@@ -3,6 +3,8 @@
 #include <QDir>
 #include <QFile>
 
+#include "global.h"
+
 #define MAP_LOCAL_ROOT      "./Map"
 #define MAP_TILE_PIX_SIZE   256
 
@@ -15,8 +17,12 @@ MapTileLoader::MapTileLoader(QObject *parent)
         mapLonSizePerZoom.insert(zoom, 360.0 / pow(2, zoom));
     }
 
-    connect(&timerDownloadQue, &QTimer::timeout, this, &MapTileLoader::timeoutDownloadQueue);
-    timerDownloadQue.start(0);
+
+    for (int i = 0; i < MAX_NAM_COUNT; i++) {
+        connect(&timerDownloadQue[i], &QTimer::timeout, this, &MapTileLoader::timeoutDownloadQueue);
+        timerDownloadQue[i].setProperty("NO", i);
+        timerDownloadQue[i].start(1);
+    }
 }
 
 void MapTileLoader::setUrlTileMap(const QString &newUrlTileMap)
@@ -25,10 +31,10 @@ void MapTileLoader::setUrlTileMap(const QString &newUrlTileMap)
     urlTileMap = newUrlTileMap;
 }
 
-int MapTileLoader::startDownloadTiles(double lat, double lon, int zoom, QRect rect)
+QRectF MapTileLoader::startDownloadTiles(double centerLat, double centerLon, int zoom, QRect rect)
 {
     int maxTileNo = static_cast<int>(pow(2, zoom)) - 1;
-    auto tileNoCenter = QPoint(longitudeToTileX(lon, zoom), latitudeToTileY(lat, zoom));
+    auto tileNoCenter = QPoint(longitudeToTileX(centerLon, zoom), latitudeToTileY(centerLat, zoom));
     auto tileNoCount = QPoint(ceil(rect.width() / 2.0 / static_cast<double>(MAP_TILE_PIX_SIZE)) + 1,
                               ceil(rect.height() / 2.0 / static_cast<double>(MAP_TILE_PIX_SIZE)) + 1);
     auto tileNoStart = tileNoCenter - tileNoCount;
@@ -64,10 +70,11 @@ int MapTileLoader::startDownloadTiles(double lat, double lon, int zoom, QRect re
     auto tileRealCenter = QRectF(QPointF(tileXtoLongitude(tileNoCenter.x(), zoom), tileYtoLatitude(tileNoCenter.y(), zoom)),
                                  QPointF(tileXtoLongitude(tileNoCenter.x() + 1, zoom), tileYtoLatitude(tileNoCenter.y() + 1, zoom)));
 
-    auto scrDelta = QPoint((lon - tileRealCenter.x()) / tileRealCenter.width() * MAP_TILE_PIX_SIZE,
-                           (lat - tileRealCenter.y()) / tileRealCenter.height() * MAP_TILE_PIX_SIZE);
+    auto scrDelta = QPoint((centerLon - tileRealCenter.x()) / tileRealCenter.width() * MAP_TILE_PIX_SIZE,
+                           (centerLat - tileRealCenter.y()) / tileRealCenter.height() * MAP_TILE_PIX_SIZE);
     auto scrStart = QPoint(rect.center() - QPoint(tileNoCount.x() * MAP_TILE_PIX_SIZE, tileNoCount.y() * MAP_TILE_PIX_SIZE)) - scrDelta;
 
+    queDownloadReq.clear();
     auto scrY = scrStart.y();
     for (int y = tileNoStart.y(); y < tileNoEnd.y(); y++) {
         auto scrX = scrStart.x();
@@ -78,8 +85,12 @@ int MapTileLoader::startDownloadTiles(double lat, double lon, int zoom, QRect re
         scrY += MAP_TILE_PIX_SIZE;
     }
 
-    // return the number tatal images to recieve
-    return (tileNoEnd.x() - tileNoStart.x()) * (tileNoEnd.y() - tileNoStart.y());
+    // return the screen's real coordinate
+    QRectF rectScrCoord;
+    rectScrCoord.setSize(QSizeF(rect.width() * tileRealCenter.width() / MAP_TILE_PIX_SIZE,
+                            -rect.height() * abs(tileRealCenter.height()) / MAP_TILE_PIX_SIZE));
+    rectScrCoord.moveCenter(QPointF(centerLon, centerLat));
+    return rectScrCoord;
 }
 
 int MapTileLoader::longitudeToTileX(double lon, int zoom)
@@ -104,7 +115,7 @@ double MapTileLoader::tileYtoLatitude(int y, int zoom)
     return 180.0 / M_PI * atan(0.5 * (exp(n) - exp(-n)));
 }
 
-bool MapTileLoader::getMapTile(int zoom, int x, int y, QRect rectScr)
+bool MapTileLoader::getMapTile(int zoom, int x, int y, QRect rectImg)
 {
     auto ret = false;
     auto fileDir = QString("/%1/%2").arg(zoom).arg(x);
@@ -119,12 +130,12 @@ bool MapTileLoader::getMapTile(int zoom, int x, int y, QRect rectScr)
 
     if (QFile::exists(fileFullPath)) {
         // load image from exsisting file
-        emit downloadedMapTile(fileFullPath, rectScr);
+        emit downloadedMapTile(fileFullPath, rectImg, zoom);
         ret = true;
     }
     else {
         // Download online map tile
-        queDownloadReq.push_back(ImageDownloadReq(fileFullPath, rectScr, urlTileMap + fileDir + fileName));
+        queDownloadReq.push_back(ImageDownloadReq(fileFullPath, rectImg, zoom, urlTileMap + fileDir + fileName));
     }
 
     return ret;
@@ -133,8 +144,9 @@ bool MapTileLoader::getMapTile(int zoom, int x, int y, QRect rectScr)
 void MapTileLoader::timeoutDownloadQueue()
 {
     if (!queDownloadReq.isEmpty()) {
+        auto timerNo = sender()->property("NO").toInt();
         auto req = queDownloadReq.takeFirst();
-        auto reply = nam.get(req.getNetworkReq());
+        auto reply = nam[timerNo].get(req.getNetworkReq());
 
         QEventLoop loop;
         connect(reply, &QNetworkReply::finished, &loop, &QEventLoop::quit);
@@ -147,7 +159,7 @@ void MapTileLoader::timeoutDownloadQueue()
                 file.close();
 
                 // Complete download image and send file path
-                emit downloadedMapTile(req.getFilePath(), req.getImgRect());
+                emit downloadedMapTile(req.getFilePath(), req.getImgRect(), req.getZoom());
             }
         }
     }

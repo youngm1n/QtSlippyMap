@@ -2,12 +2,14 @@
 
 #include <QApplication>
 #include <QWheelEvent>
+#include <QMouseEvent>
 #include <QPainter>
 
 ViewerMap::ViewerMap(QWidget *parent) : QOpenGLWidget(parent)
 {
     qApp->installEventFilter(this);
-    zoomCurrent = zoomPrevious = 10;
+    currentZoom = previousZoom = 10;
+    dragMap = false;
 
     connect(&mapTileLoader, &MapTileLoader::downloadedMapTile, this, &ViewerMap::downloadedMapTile);
 }
@@ -19,18 +21,24 @@ void ViewerMap::setUrlTileMap(const QString &newUrlTileMap)
 
 void ViewerMap::resizeGL(int w, int h)
 {
+    Q_UNUSED(w);
+    Q_UNUSED(h);
     updateMapTiles();
 }
 
 void ViewerMap::updateMapTiles()
 {
-//    float radius = (width() > height() ? width() : height()) / 2.0f;
-//    radius = sqrt(radius * radius + radius * radius) * 2;
-//    rectMapDraw.setSize(QSize(radius, radius));
-    rectMapDraw = rect();
+    mapTiles[currentZoom].clear();
+    rectCurrentLatLon = mapTileLoader.startDownloadTiles(currentLat, currentLon, currentZoom, rect());
+    qDebug() << rectCurrentLatLon;
+}
 
-    mapTiles[zoomCurrent].clear();
-    mapTileLoader.startDownloadTiles(currentLat, currentLon, zoomCurrent, rectMapDraw);
+QPointF ViewerMap::convPixToCoord(QPoint pt)
+{
+    QPointF coord((pt.x() / static_cast<float>(rect().width())) * rectCurrentLatLon.width(),
+                  (pt.y() / static_cast<float>(rect().height())) * rectCurrentLatLon.height());
+
+    return coord;
 }
 
 //void ViewerMap::convScreenPosToLatLon(QPointF pos, double &lat, double &lon)
@@ -67,9 +75,9 @@ void ViewerMap::updateMapTiles()
 //    dstLon *= RadToDeg;
 //}
 
-void ViewerMap::downloadedMapTile(QString imgFilePath, QRect rectScr)
+void ViewerMap::downloadedMapTile(QString imgFilePath, QRect rectScr, int zoom)
 {
-    mapTiles[zoomCurrent].insert(imgFilePath, rectScr);
+    mapTiles[zoom].insert(imgFilePath, rectScr);
     update();
 }
 
@@ -79,14 +87,6 @@ void ViewerMap::setCurrentLocation(double newCurrentLat, double newCurrentLon)
     currentLon = newCurrentLon;
 }
 
-bool ViewerMap::eventFilter(QObject *watched, QEvent *event)
-{
-    if (watched == this) {
-
-    }
-    return QOpenGLWidget::eventFilter(watched, event);
-}
-
 void ViewerMap::paintEvent(QPaintEvent *event)
 {
     Q_UNUSED(event);
@@ -94,25 +94,52 @@ void ViewerMap::paintEvent(QPaintEvent *event)
     QPainter p;
     p.begin(this);
 
-    for (QMap<QString, QRect>::iterator iter = mapTiles[zoomCurrent].begin(); iter != mapTiles[zoomCurrent].end(); ++iter) {
+    for (QMap<QString, QRect>::iterator iter = mapTiles[currentZoom].begin(); iter != mapTiles[currentZoom].end(); ++iter) {
         p.drawImage(iter.value(), QImage(iter.key()));
     }
-
-    p.setPen(Qt::red);
-    p.drawLine(0, rect().center().y(), width(), rect().center().y());
-    p.drawLine(rect().center().x(), 0, rect().center().x(), height());
 
     p.end();
 }
 
+bool ViewerMap::eventFilter(QObject *watched, QEvent *event)
+{
+    if (watched == this && event->type() == QEvent::MouseMove) {
+        auto posMouse = static_cast<QMouseEvent *>(event)->pos();
+        if (dragMap) {
+            auto dragDelta = posMouse - dragMapStart;
+            auto dragCoord = convPixToCoord(dragDelta);
+            currentLon -= dragCoord.x();
+            currentLat -= dragCoord.y();
+            updateMapTiles();
+            update();
+
+            dragMapStart = posMouse;
+        }
+        else {
+            auto coordMouse = convPixToCoord(posMouse) + rectCurrentLatLon.topLeft();
+            qDebug() << coordMouse;
+        }
+
+        return true;
+    }
+    return QOpenGLWidget::eventFilter(watched, event);
+}
+
 void ViewerMap::mousePressEvent(QMouseEvent *event)
 {
-
+    if (event->button() == Qt::RightButton) {
+        dragMap = true;
+        dragMapStart = event->pos();
+    }
 }
 
 void ViewerMap::mouseReleaseEvent(QMouseEvent *event)
 {
-
+    Q_UNUSED(event);
+    if (dragMap) {
+        dragMap = false;
+        emit updateCurrentLocation(currentLat, currentLon);
+    }
 }
 
 void ViewerMap::mouseDoubleClickEvent(QMouseEvent *event)
@@ -122,24 +149,20 @@ void ViewerMap::mouseDoubleClickEvent(QMouseEvent *event)
 
 void ViewerMap::wheelEvent(QWheelEvent *event)
 {
-    mutexZoom.lock();
-    zoomPrevious = zoomCurrent;
+    previousZoom = currentZoom;
     if (event->angleDelta().y() > 0) {
-        zoomCurrent++;
+        currentZoom++;
     }
     else {
-        zoomCurrent--;
+        currentZoom--;
     }
 
-    if (zoomCurrent < 4)       zoomCurrent = 4;
-    else if (zoomCurrent > 19) zoomCurrent = 19;
+    if (currentZoom < 4)       currentZoom = 4;
+    else if (currentZoom > 19) currentZoom = 19;
 
-    if (zoomPrevious != zoomCurrent) {
-        qDebug() << "Zoom: " << zoomCurrent;
-
+    if (previousZoom != currentZoom) {
         updateMapTiles();
         update();
     }
-    mutexZoom.unlock();
 }
 
