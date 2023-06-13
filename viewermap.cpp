@@ -4,6 +4,9 @@
 #include <QWheelEvent>
 #include <QMouseEvent>
 #include <QPainter>
+#include <QFontMetrics>
+
+#include "global.h"
 
 ViewerMap::ViewerMap(QWidget *parent) : QOpenGLWidget(parent)
 {
@@ -17,6 +20,12 @@ ViewerMap::ViewerMap(QWidget *parent) : QOpenGLWidget(parent)
 void ViewerMap::setUrlTileMap(const QString &newUrlTileMap)
 {
     mapTileLoader.setUrlTileMap(newUrlTileMap);
+}
+
+void ViewerMap::setCurrentLocation(float newCurrentLat, float newCurrentLon)
+{
+    centerLatLon.setX(newCurrentLon);
+    centerLatLon.setY(newCurrentLat);
 }
 
 void ViewerMap::resizeGL(int w, int h)
@@ -80,12 +89,6 @@ void ViewerMap::downloadedMapTile(QString imgFilePath, QRect rectScr, int zoom)
     update();
 }
 
-void ViewerMap::setCurrentLocation(float newCurrentLat, float newCurrentLon)
-{
-    centerLatLon.setX(newCurrentLon);
-    centerLatLon.setY(newCurrentLat);
-}
-
 void ViewerMap::paintEvent(QPaintEvent *event)
 {
     Q_UNUSED(event);
@@ -93,9 +96,17 @@ void ViewerMap::paintEvent(QPaintEvent *event)
     QPainter p;
     p.begin(this);
 
+    // Draw map tiles
     for (QMap<QString, QRect>::iterator iter = mapTiles[currentZoom].begin(); iter != mapTiles[currentZoom].end(); ++iter) {
         p.drawImage(iter.value(), QImage(iter.key()));
     }
+
+    // Current mouse position
+    p.setPen(Qt::black);
+    auto strLatLon = QString(" %1, %2 ").arg(getCoordString(mouseLatLon.y()), getCoordString(mouseLatLon.x()));
+    auto sizeStrLatLon = QFontMetrics(p.font()).boundingRect(strLatLon).size();
+    auto rectLatLon = QRect(QPoint(rect().bottomLeft()) - QPoint(0, sizeStrLatLon.height()), sizeStrLatLon);
+    p.drawText(rectLatLon, strLatLon);
 
     p.end();
 }
@@ -114,8 +125,8 @@ bool ViewerMap::eventFilter(QObject *watched, QEvent *event)
             dragMapStart = posMouse;
         }
         else {
-            auto coordMouse = convPixToCoord(posMouse) + rectCurrentLatLon.topLeft();
-            qDebug() << coordMouse;
+            mouseLatLon = convPixToCoord(posMouse) + rectCurrentLatLon.topLeft();
+            update();
         }
 
         return true;
@@ -129,6 +140,8 @@ void ViewerMap::mousePressEvent(QMouseEvent *event)
         dragMap = true;
         dragMapStart = event->pos();
     }
+
+    update();
 }
 
 void ViewerMap::mouseReleaseEvent(QMouseEvent *event)
@@ -138,6 +151,8 @@ void ViewerMap::mouseReleaseEvent(QMouseEvent *event)
         dragMap = false;
         emit updateCurrentLocation(centerLatLon.y(), centerLatLon.x());
     }
+
+    update();
 }
 
 void ViewerMap::mouseDoubleClickEvent(QMouseEvent *event)

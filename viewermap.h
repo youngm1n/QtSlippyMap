@@ -15,6 +15,7 @@ public:
     ViewerMap(QWidget *parent = nullptr);
 
     void setUrlTileMap(const QString &newUrlTileMap);
+    void setCurrentLocation(float newCurrentLat, float newCurrentLon);
 
 private:
     void updateMapTiles();
@@ -31,9 +32,11 @@ private:
     MapTileLoader mapTileLoader;
     QMap<QString, QRect> mapTiles[MAX_ZOOM_COUNT];
 
-    // Current position (real lat/lon)
+    // Position (real lat/lon)
     QPointF centerLatLon;
     QRectF rectCurrentLatLon;
+    QPointF mouseLatLon;
+
 
     // drawing parameters
     int currentZoom;
@@ -44,9 +47,6 @@ private:
     // QObject interface
 public:
     bool eventFilter(QObject *watched, QEvent *event);
-
-    // QWidget interface
-    void setCurrentLocation(float newCurrentLat, float newCurrentLon);
 
 protected:
     void paintEvent(QPaintEvent *event);

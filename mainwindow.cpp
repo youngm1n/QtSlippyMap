@@ -1,6 +1,8 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
 
+#include "global.h"
+
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
@@ -9,15 +11,25 @@ MainWindow::MainWindow(QWidget *parent)
 
 //    showMaximized();
 
+    // Coordinate type
+    registerCoordinateWidget(ui->widgetCurrentLat);
+    registerCoordinateWidget(ui->widgetCurrentLon);
+    connect(ui->radioButtonDeg, &QRadioButton::toggled, this, [&](bool checked){
+        setCoordType(checked ? COORD_TYPE_DEG : COORD_TYPE_DMS);
+        ui->openGLWidgetMapView->update();
+    });
+    setCoordType(COORD_TYPE_DEG);
+
     // Init tile map server
     ui->openGLWidgetMapView->setUrlTileMap(ui->comboBoxTileMapUrl->currentText());
     connect(ui->comboBoxTileMapUrl, &QComboBox::currentTextChanged, ui->openGLWidgetMapView, &ViewerMap::setUrlTileMap);
 
     // Init current location
+    ui->widgetCurrentLat->setValue(24.458510f);
+    ui->widgetCurrentLon->setValue(54.397629f);
     connect(ui->openGLWidgetMapView, &ViewerMap::updateCurrentLocation, this, &MainWindow::updateCurrentLocation);
-    connect(ui->pushButtonUpdateLocation, &QPushButton::pressed, this, [this]() {
-        ui->openGLWidgetMapView->setCurrentLocation(ui->lineEditCurrentLat->text().toFloat(),
-                                                    ui->lineEditCurrentLon->text().toFloat());
+    connect(ui->pushButtonUpdateLocation, &QPushButton::pressed, this, [&]() {
+        ui->openGLWidgetMapView->setCurrentLocation(ui->widgetCurrentLat->getValue(), ui->widgetCurrentLon->getValue());
     });
     ui->pushButtonUpdateLocation->pressed();
 }
@@ -29,6 +41,6 @@ MainWindow::~MainWindow()
 
 void MainWindow::updateCurrentLocation(float latitude, float longitude)
 {
-    ui->lineEditCurrentLat->setText(QString("%1").arg(latitude, 0, 'f', 8, QLatin1Char('0')));
-    ui->lineEditCurrentLon->setText(QString("%1").arg(longitude, 0, 'f', 8, QLatin1Char('0')));
+    ui->widgetCurrentLat->setValue(latitude);
+    ui->widgetCurrentLon->setValue(longitude);
 }
