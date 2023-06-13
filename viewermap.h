@@ -30,7 +30,9 @@ private:
     double currentLon;
 
     QRect rectMapDraw; // x2 size for rotating
-    int zoom;
+    int zoomCurrent;
+    int zoomPrevious;
+    QMutex mutexZoom;
 
     QMap<QString, QRect> mapTiles[MAX_ZOOM_COUNT];
 

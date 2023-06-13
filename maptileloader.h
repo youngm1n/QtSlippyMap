@@ -16,6 +16,26 @@
 
 // https://wiki.openstreetmap.org/wiki/Slippy_map_tilenames
 
+class ImageDownloadReq
+{
+public:
+    explicit ImageDownloadReq(QString newFilePath, QRect newRect, QString url) {
+        filePath = newFilePath;
+        rect = newRect;
+        req.setUrl(QUrl(url));
+        req.setRawHeader("User-Agent", "The Qt Company (Qt) Graphics Dojo 1.0");
+    }
+
+    QNetworkRequest getNetworkReq() { return req; }
+    QString getFilePath()   { return filePath; }
+    QRect getImgRect()      { return rect; }
+
+private:
+    QNetworkRequest req;
+    QString filePath;
+    QRect rect;
+};
+
 class MapTileLoader : public QObject
 {
     Q_OBJECT
@@ -23,8 +43,7 @@ public:
     explicit MapTileLoader(QObject *parent = nullptr);
 
     void setUrlTileMap(const QString &newUrlTileMap);
-
-    void getMapFromCoordinate(double lat, double lon, int zoom, QRect rect);
+    int startDownloadTiles(double lat, double lon, int zoom, QRect rect);
 
 private:
     int longitudeToTileX(double lon, int zoom);
@@ -35,8 +54,7 @@ private:
     bool getMapTile(int zoom, int x, int y, QRect rectScr);
 
 private slots:
-    void finishedTileDownload(QNetworkReply *reply);
-    void timeoutNamReq();
+    void timeoutDownloadQueue();
 
 signals:
     void downloadedMapTile(QString imgFilePath, QRect rectScr);
@@ -45,9 +63,9 @@ private:
     QString urlTileMap;
     QMap<int, double> mapLonSizePerZoom;
 
-    QQueue<QNetworkAccessManager *> nams;
-    QTimer timerNamReq;
-    QMutex mutexNamReq;
+    QNetworkAccessManager nam;
+    QQueue<ImageDownloadReq> queDownloadReq;
+    QTimer timerDownloadQue;
 
 signals:
 

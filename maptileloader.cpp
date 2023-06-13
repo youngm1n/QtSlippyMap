@@ -9,14 +9,14 @@
 MapTileLoader::MapTileLoader(QObject *parent)
     : QObject{parent}
 {
-//    QDir(MAP_LOCAL_ROOT).removeRecursively();
+    QDir(MAP_LOCAL_ROOT).removeRecursively();
     QDir().mkdir(MAP_LOCAL_ROOT);
     for (int zoom = 0; zoom < 20; zoom++) {
         mapLonSizePerZoom.insert(zoom, 360.0 / pow(2, zoom));
     }
 
-    connect(&timerNamReq, &QTimer::timeout, this, &MapTileLoader::timeoutNamReq);
-    timerNamReq.start(10);
+    connect(&timerDownloadQue, &QTimer::timeout, this, &MapTileLoader::timeoutDownloadQueue);
+    timerDownloadQue.start(0);
 }
 
 void MapTileLoader::setUrlTileMap(const QString &newUrlTileMap)
@@ -25,7 +25,7 @@ void MapTileLoader::setUrlTileMap(const QString &newUrlTileMap)
     urlTileMap = newUrlTileMap;
 }
 
-void MapTileLoader::getMapFromCoordinate(double lat, double lon, int zoom, QRect rect)
+int MapTileLoader::startDownloadTiles(double lat, double lon, int zoom, QRect rect)
 {
     int maxTileNo = static_cast<int>(pow(2, zoom)) - 1;
     auto tileNoCenter = QPoint(longitudeToTileX(lon, zoom), latitudeToTileY(lat, zoom));
@@ -34,6 +34,7 @@ void MapTileLoader::getMapFromCoordinate(double lat, double lon, int zoom, QRect
     auto tileNoStart = tileNoCenter - tileNoCount;
     auto tileNoEnd = tileNoCenter + tileNoCount;
 
+    // Rescale start and end no by max tile number
     if (tileNoStart.x() < 0) {
         tileNoStart.setX(0);
     }
@@ -76,6 +77,9 @@ void MapTileLoader::getMapFromCoordinate(double lat, double lon, int zoom, QRect
         }
         scrY += MAP_TILE_PIX_SIZE;
     }
+
+    // return the number tatal images to recieve
+    return (tileNoEnd.x() - tileNoStart.x()) * (tileNoEnd.y() - tileNoStart.y());
 }
 
 int MapTileLoader::longitudeToTileX(double lon, int zoom)
@@ -116,59 +120,35 @@ bool MapTileLoader::getMapTile(int zoom, int x, int y, QRect rectScr)
     if (QFile::exists(fileFullPath)) {
         // load image from exsisting file
         emit downloadedMapTile(fileFullPath, rectScr);
+        ret = true;
     }
     else {
         // Download online map tile
-        QString url = urlTileMap + fileDir + fileName;
-
-        auto *nam = new QNetworkAccessManager(this);
-        nam->setProperty("PATH", fileFullPath);
-        nam->setProperty("URL", url);
-        nam->setProperty("SCREEN_RECT", rectScr);
-        connect(nam, &QNetworkAccessManager::finished, this, &MapTileLoader::finishedTileDownload);
-        mutexNamReq.lock();
-        nams.push_back(nam);
-        mutexNamReq.unlock();
+        queDownloadReq.push_back(ImageDownloadReq(fileFullPath, rectScr, urlTileMap + fileDir + fileName));
     }
 
     return ret;
 }
 
-void MapTileLoader::timeoutNamReq()
+void MapTileLoader::timeoutDownloadQueue()
 {
-    mutexNamReq.lock();
+    if (!queDownloadReq.isEmpty()) {
+        auto req = queDownloadReq.takeFirst();
+        auto reply = nam.get(req.getNetworkReq());
 
-    if (!nams.isEmpty()) {
-        auto nam = nams.takeFirst();
+        QEventLoop loop;
+        connect(reply, &QNetworkReply::finished, &loop, &QEventLoop::quit);
+        loop.exec();
 
-        QNetworkRequest req;
-        req.setUrl(QUrl(nam->property("URL").toString()));
-        req.setRawHeader("User-Agent", "The Qt Company (Qt) Graphics Dojo 1.0");
-        nam->get(req);
-    }
+        if (reply->error() == QNetworkReply::NoError) {
+            QFile file(req.getFilePath());
+            if (file.open(QFile::WriteOnly)) {
+                file.write(reply->readAll());
+                file.close();
 
-    mutexNamReq.unlock();
-}
-
-void MapTileLoader::finishedTileDownload(QNetworkReply *reply)
-{
-    auto nam = reinterpret_cast<QNetworkAccessManager *>(sender());
-    if (reply->error() == QNetworkReply::NoError) {
-        auto fileFullPath = nam->property("PATH").toString();
-
-        QFile file(fileFullPath);
-        if (file.open(QFile::WriteOnly)) {
-            file.write(reply->readAll());
-            file.close();
-
-            // Complete download image and send file path
-            emit downloadedMapTile(fileFullPath, nam->property("SCREEN_RECT").toRect());
+                // Complete download image and send file path
+                emit downloadedMapTile(req.getFilePath(), req.getImgRect());
+            }
         }
     }
-    else {
-        qDebug() << nam->property("URL").toString();
-        qDebug() << "Reply Error: " << reply->errorString();
-    }
-    reply->deleteLater();
-    disconnect(nam, &QNetworkAccessManager::finished, this, &MapTileLoader::finishedTileDownload);
 }

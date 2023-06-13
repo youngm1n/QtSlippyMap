@@ -7,7 +7,7 @@
 ViewerMap::ViewerMap(QWidget *parent) : QOpenGLWidget(parent)
 {
     qApp->installEventFilter(this);
-    zoom = 10;
+    zoomCurrent = zoomPrevious = 10;
 
     connect(&mapTileLoader, &MapTileLoader::downloadedMapTile, this, &ViewerMap::downloadedMapTile);
 }
@@ -29,7 +29,8 @@ void ViewerMap::updateMapTiles()
 //    rectMapDraw.setSize(QSize(radius, radius));
     rectMapDraw = rect();
 
-    mapTileLoader.getMapFromCoordinate(currentLat, currentLon, zoom, rectMapDraw);
+    mapTiles[zoomCurrent].clear();
+    mapTileLoader.startDownloadTiles(currentLat, currentLon, zoomCurrent, rectMapDraw);
 }
 
 //void ViewerMap::convScreenPosToLatLon(QPointF pos, double &lat, double &lon)
@@ -68,10 +69,8 @@ void ViewerMap::updateMapTiles()
 
 void ViewerMap::downloadedMapTile(QString imgFilePath, QRect rectScr)
 {
-    if (zoom < MAX_ZOOM_COUNT) {
-        mapTiles[zoom].insert(imgFilePath, rectScr);
-        update();
-    }
+    mapTiles[zoomCurrent].insert(imgFilePath, rectScr);
+    update();
 }
 
 void ViewerMap::setCurrentLocation(double newCurrentLat, double newCurrentLon)
@@ -94,9 +93,8 @@ void ViewerMap::paintEvent(QPaintEvent *event)
 
     QPainter p;
     p.begin(this);
-    p.fillRect(rect(), Qt::black);
 
-    for (QMap<QString, QRect>::iterator iter = mapTiles[zoom].begin(); iter != mapTiles[zoom].end(); ++iter) {
+    for (QMap<QString, QRect>::iterator iter = mapTiles[zoomCurrent].begin(); iter != mapTiles[zoomCurrent].end(); ++iter) {
         p.drawImage(iter.value(), QImage(iter.key()));
     }
 
@@ -124,19 +122,24 @@ void ViewerMap::mouseDoubleClickEvent(QMouseEvent *event)
 
 void ViewerMap::wheelEvent(QWheelEvent *event)
 {
+    mutexZoom.lock();
+    zoomPrevious = zoomCurrent;
     if (event->angleDelta().y() > 0) {
-        zoom++;
+        zoomCurrent++;
     }
     else {
-        zoom--;
+        zoomCurrent--;
     }
 
-    if (zoom < 4)       zoom = 4;
-    else if (zoom > 19) zoom = 19;
+    if (zoomCurrent < 4)       zoomCurrent = 4;
+    else if (zoomCurrent > 19) zoomCurrent = 19;
 
-    qDebug() << "Zoom: " << zoom;
+    if (zoomPrevious != zoomCurrent) {
+        qDebug() << "Zoom: " << zoomCurrent;
 
-    updateMapTiles();
-    update();
+        updateMapTiles();
+        update();
+    }
+    mutexZoom.unlock();
 }
 
