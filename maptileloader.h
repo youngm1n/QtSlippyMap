@@ -47,13 +47,13 @@ public:
     explicit MapTileLoader(QObject *parent = nullptr);
 
     void setUrlTileMap(const QString &newUrlTileMap);
-    QRectF startDownloadTiles(double lat, double lon, int zoom, QRect rect);
+    QRectF startDownloadTiles(QPointF center, int zoom, QRect rect);
 
 private:
-    int longitudeToTileX(double lon, int zoom);
-    int latitudeToTileY(double lat, int zoom);
-    double tileXtoLongitude(int x, int zoom);
-    double tileYtoLatitude(int y, int zoom);
+    int longitudeToTileX(float lon, int zoom);
+    int latitudeToTileY(float lat, int zoom);
+    float tileXtoLongitude(int x, int zoom);
+    float tileYtoLatitude(int y, int zoom);
 
     bool getMapTile(int zoom, int x, int y, QRect rectScr);
 

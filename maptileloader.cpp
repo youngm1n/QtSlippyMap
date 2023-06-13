@@ -31,10 +31,10 @@ void MapTileLoader::setUrlTileMap(const QString &newUrlTileMap)
     urlTileMap = newUrlTileMap;
 }
 
-QRectF MapTileLoader::startDownloadTiles(double centerLat, double centerLon, int zoom, QRect rect)
+QRectF MapTileLoader::startDownloadTiles(QPointF center, int zoom, QRect rect)
 {
     int maxTileNo = static_cast<int>(pow(2, zoom)) - 1;
-    auto tileNoCenter = QPoint(longitudeToTileX(centerLon, zoom), latitudeToTileY(centerLat, zoom));
+    auto tileNoCenter = QPoint(longitudeToTileX(center.x(), zoom), latitudeToTileY(center.y(), zoom));
     auto tileNoCount = QPoint(ceil(rect.width() / 2.0 / static_cast<double>(MAP_TILE_PIX_SIZE)) + 1,
                               ceil(rect.height() / 2.0 / static_cast<double>(MAP_TILE_PIX_SIZE)) + 1);
     auto tileNoStart = tileNoCenter - tileNoCount;
@@ -70,8 +70,8 @@ QRectF MapTileLoader::startDownloadTiles(double centerLat, double centerLon, int
     auto tileRealCenter = QRectF(QPointF(tileXtoLongitude(tileNoCenter.x(), zoom), tileYtoLatitude(tileNoCenter.y(), zoom)),
                                  QPointF(tileXtoLongitude(tileNoCenter.x() + 1, zoom), tileYtoLatitude(tileNoCenter.y() + 1, zoom)));
 
-    auto scrDelta = QPoint((centerLon - tileRealCenter.x()) / tileRealCenter.width() * MAP_TILE_PIX_SIZE,
-                           (centerLat - tileRealCenter.y()) / tileRealCenter.height() * MAP_TILE_PIX_SIZE);
+    auto scrDelta = QPoint((center.x() - tileRealCenter.x()) / tileRealCenter.width() * MAP_TILE_PIX_SIZE,
+                           (center.y() - tileRealCenter.y()) / tileRealCenter.height() * MAP_TILE_PIX_SIZE);
     auto scrStart = QPoint(rect.center() - QPoint(tileNoCount.x() * MAP_TILE_PIX_SIZE, tileNoCount.y() * MAP_TILE_PIX_SIZE)) - scrDelta;
 
     queDownloadReq.clear();
@@ -89,30 +89,30 @@ QRectF MapTileLoader::startDownloadTiles(double centerLat, double centerLon, int
     QRectF rectScrCoord;
     rectScrCoord.setSize(QSizeF(rect.width() * tileRealCenter.width() / MAP_TILE_PIX_SIZE,
                             -rect.height() * abs(tileRealCenter.height()) / MAP_TILE_PIX_SIZE));
-    rectScrCoord.moveCenter(QPointF(centerLon, centerLat));
+    rectScrCoord.moveCenter(center);
     return rectScrCoord;
 }
 
-int MapTileLoader::longitudeToTileX(double lon, int zoom)
+int MapTileLoader::longitudeToTileX(float lon, int zoom)
 {
-    return static_cast<int>(floor((lon + 180.0) / 360.0 * (1 << zoom)));
+    return static_cast<int>(floor((lon + 180.0f) / 360.0f * (1 << zoom)));
 }
 
-int MapTileLoader::latitudeToTileY(double lat, int zoom)
+int MapTileLoader::latitudeToTileY(float lat, int zoom)
 {
     double latRad = lat * DegToRad;
-    return static_cast<int>(floor((1.0 - asinh(tan(latRad)) / M_PI) / 2.0 * (1 << zoom)));
+    return static_cast<int>(floor((1.0f - asinh(tan(latRad)) / M_PI) / 2.0f * (1 << zoom)));
 }
 
-double MapTileLoader::tileXtoLongitude(int x, int zoom)
+float MapTileLoader::tileXtoLongitude(int x, int zoom)
 {
-    return x / static_cast<double>(1 << zoom) * 360.0 - 180.0;
+    return x / static_cast<float>(1 << zoom) * 360.0f - 180.0f;
 }
 
-double MapTileLoader::tileYtoLatitude(int y, int zoom)
+float MapTileLoader::tileYtoLatitude(int y, int zoom)
 {
-    double n = M_PI - 2.0 * M_PI * y / static_cast<double>(1 << zoom);
-    return 180.0 / M_PI * atan(0.5 * (exp(n) - exp(-n)));
+    float n = M_PI - 2.0f * M_PI * y / static_cast<double>(1 << zoom);
+    return 180.0f / M_PI * atan(0.5f * (exp(n) - exp(-n)));
 }
 
 bool MapTileLoader::getMapTile(int zoom, int x, int y, QRect rectImg)

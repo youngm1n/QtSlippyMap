@@ -6,8 +6,6 @@
 
 #include "maptileloader.h"
 
-#include "global.h"
-
 #define MAX_ZOOM_COUNT  20
 
 class ViewerMap : public QOpenGLWidget
@@ -26,7 +24,7 @@ private slots:
     void downloadedMapTile(QString imgFilePath, QRect rectScr, int zoom);
 
 signals:
-    void updateCurrentLocation(double latitude, double longitude);
+    void updateCurrentLocation(float latitude, float longitude);
 
 private:
     // Map tile parameters
@@ -34,8 +32,7 @@ private:
     QMap<QString, QRect> mapTiles[MAX_ZOOM_COUNT];
 
     // Current position (real lat/lon)
-    double currentLat;
-    double currentLon;
+    QPointF centerLatLon;
     QRectF rectCurrentLatLon;
 
     // drawing parameters
@@ -49,7 +46,7 @@ public:
     bool eventFilter(QObject *watched, QEvent *event);
 
     // QWidget interface
-    void setCurrentLocation(double newCurrentLat, double newCurrentLon);
+    void setCurrentLocation(float newCurrentLat, float newCurrentLon);
 
 protected:
     void paintEvent(QPaintEvent *event);

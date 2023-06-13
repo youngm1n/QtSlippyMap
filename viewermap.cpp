@@ -29,8 +29,7 @@ void ViewerMap::resizeGL(int w, int h)
 void ViewerMap::updateMapTiles()
 {
     mapTiles[currentZoom].clear();
-    rectCurrentLatLon = mapTileLoader.startDownloadTiles(currentLat, currentLon, currentZoom, rect());
-    qDebug() << rectCurrentLatLon;
+    rectCurrentLatLon = mapTileLoader.startDownloadTiles(centerLatLon, currentZoom, rect());
 }
 
 QPointF ViewerMap::convPixToCoord(QPoint pt)
@@ -81,10 +80,10 @@ void ViewerMap::downloadedMapTile(QString imgFilePath, QRect rectScr, int zoom)
     update();
 }
 
-void ViewerMap::setCurrentLocation(double newCurrentLat, double newCurrentLon)
+void ViewerMap::setCurrentLocation(float newCurrentLat, float newCurrentLon)
 {
-    currentLat = newCurrentLat;
-    currentLon = newCurrentLon;
+    centerLatLon.setX(newCurrentLon);
+    centerLatLon.setY(newCurrentLat);
 }
 
 void ViewerMap::paintEvent(QPaintEvent *event)
@@ -108,8 +107,7 @@ bool ViewerMap::eventFilter(QObject *watched, QEvent *event)
         if (dragMap) {
             auto dragDelta = posMouse - dragMapStart;
             auto dragCoord = convPixToCoord(dragDelta);
-            currentLon -= dragCoord.x();
-            currentLat -= dragCoord.y();
+            centerLatLon -= dragCoord;
             updateMapTiles();
             update();
 
@@ -138,7 +136,7 @@ void ViewerMap::mouseReleaseEvent(QMouseEvent *event)
     Q_UNUSED(event);
     if (dragMap) {
         dragMap = false;
-        emit updateCurrentLocation(currentLat, currentLon);
+        emit updateCurrentLocation(centerLatLon.y(), centerLatLon.x());
     }
 }
 

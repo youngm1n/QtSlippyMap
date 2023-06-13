@@ -3,8 +3,6 @@
 
 #include <QMainWindow>
 
-#include "global.h"
-
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
 QT_END_NAMESPACE
@@ -18,7 +16,7 @@ public:
     ~MainWindow();
 
 private slots:
-    void updateCurrentLocation(double latitude, double longitude);
+    void updateCurrentLocation(float latitude, float longitude);
 
 private:
     Ui::MainWindow *ui;

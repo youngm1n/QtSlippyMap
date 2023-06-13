@@ -16,8 +16,8 @@ MainWindow::MainWindow(QWidget *parent)
     // Init current location
     connect(ui->openGLWidgetMapView, &ViewerMap::updateCurrentLocation, this, &MainWindow::updateCurrentLocation);
     connect(ui->pushButtonUpdateLocation, &QPushButton::pressed, this, [this]() {
-        ui->openGLWidgetMapView->setCurrentLocation(ui->lineEditCurrentLat->text().toDouble(),
-                                                    ui->lineEditCurrentLon->text().toDouble());
+        ui->openGLWidgetMapView->setCurrentLocation(ui->lineEditCurrentLat->text().toFloat(),
+                                                    ui->lineEditCurrentLon->text().toFloat());
     });
     ui->pushButtonUpdateLocation->pressed();
 }
@@ -27,7 +27,7 @@ MainWindow::~MainWindow()
     delete ui;
 }
 
-void MainWindow::updateCurrentLocation(double latitude, double longitude)
+void MainWindow::updateCurrentLocation(float latitude, float longitude)
 {
     ui->lineEditCurrentLat->setText(QString("%1").arg(latitude, 0, 'f', 8, QLatin1Char('0')));
     ui->lineEditCurrentLon->setText(QString("%1").arg(longitude, 0, 'f', 8, QLatin1Char('0')));
