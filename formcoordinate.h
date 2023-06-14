@@ -15,10 +15,14 @@ public:
     explicit FormCoordinate(QWidget *parent = nullptr);
     ~FormCoordinate();
 
-    void setType(int newType);
+    void setShowType(int newType);
+    void setLatLonType(int newLatLonType);
 
     float getValue() const;
     void setValue(float newValue);
+
+private:
+    void connectItems(bool con);
 
 private slots:
     void changeDmsValues();
@@ -26,7 +30,8 @@ private slots:
 private:
     Ui::FormCoordinate *ui;
 
-    int type;
+    int showType;
+    int latLonType;
     float value;
 };
 

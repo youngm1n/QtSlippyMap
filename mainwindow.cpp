@@ -24,10 +24,10 @@ MainWindow::MainWindow(QWidget *parent)
     registerCoordinateWidget(ui->widgetCurrentLat);
     registerCoordinateWidget(ui->widgetCurrentLon);
     connect(ui->radioButtonDeg, &QRadioButton::toggled, this, [&](bool checked){
-        setCoordType(checked ? COORD_TYPE_DEG : COORD_TYPE_DMS);
+        setCoordType(checked ? COORD_SHOW_DEG : COORD_SHOW_DMS);
         ui->openGLWidgetMapView->update();
     });
-    setCoordType(COORD_TYPE_DEG);
+    setCoordType(COORD_SHOW_DEG);
 
     // Init tile map server
     ui->openGLWidgetMapView->setInitTileMap(ui->comboBoxTileMapUrl->currentText(),
@@ -40,20 +40,20 @@ MainWindow::MainWindow(QWidget *parent)
     // Init current location
     ui->widgetCurrentLat->setValue(24.458510f);
     ui->widgetCurrentLon->setValue(54.397629f);
-    connect(ui->openGLWidgetMapView, &ViewerMap::updateCurrentLocation, this, &MainWindow::updateCurrentLocation);
+    connect(ui->openGLWidgetMapView, &ViewerMap::updateCurrentLocation, this, [&](float lat, float lon) {
+        ui->widgetCurrentLat->setValue(lat);
+        ui->widgetCurrentLon->setValue(lon);
+    });
     connect(ui->pushButtonUpdateLocation, &QPushButton::pressed, this, [&]() {
         ui->openGLWidgetMapView->setCurrentLocation(ui->widgetCurrentLat->getValue(), ui->widgetCurrentLon->getValue());
     });
     emit ui->pushButtonUpdateLocation->pressed();
+
+    // Init grid control
+    connect(ui->checkBoxShowGrid, &QCheckBox::toggled, ui->openGLWidgetMapView, &ViewerMap::setShowGrid);
 }
 
 MainWindow::~MainWindow()
 {
     delete ui;
-}
-
-void MainWindow::updateCurrentLocation(float latitude, float longitude)
-{
-    ui->widgetCurrentLat->setValue(latitude);
-    ui->widgetCurrentLon->setValue(longitude);
 }

@@ -8,7 +8,8 @@
 
 #include "formcoordinate.h"
 
-enum COORD_TYPE { COORD_TYPE_DEG, COORD_TYPE_DMS };
+enum COORD_SHOW { COORD_SHOW_DEG, COORD_SHOW_DMS };
+enum COORD_TYPE { COORD_TYPE_LAT, COORD_TYPE_LON };
 
 void registerCoordinateWidget(FormCoordinate *w);
 void setCoordType(int type);

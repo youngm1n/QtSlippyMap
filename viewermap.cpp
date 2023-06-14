@@ -15,6 +15,7 @@ ViewerMap::ViewerMap(QWidget *parent) : QOpenGLWidget(parent)
     mapTiles = nullptr;
     currentZoom = previousZoom = 10;
     dragMap = false;
+    showGrid = false;
 
     connect(&mapTileLoader, &MapTileLoader::downloadedMapTile, this, &ViewerMap::downloadedMapTile);
 }
@@ -26,7 +27,7 @@ void ViewerMap::setInitTileMap(const QString &url, const int newMaxZoom)
     }
 
     maxZoom = newMaxZoom;
-    mapTiles = new QMap<QString, QRect>[maxZoom + 1];
+    mapTiles = new MAP_TILES[maxZoom + 1];
 
     mapTileLoader.setUrlTileMap(url);
     updateMapTiles();
@@ -41,6 +42,12 @@ void ViewerMap::setCurrentLocation(float newCurrentLat, float newCurrentLon)
     centerLatLon.setY(newCurrentLat);
 }
 
+void ViewerMap::setShowGrid(bool newShowGrid)
+{
+    showGrid = newShowGrid;
+    update();
+}
+
 void ViewerMap::resizeGL(int w, int h)
 {
     rectCacheMap = QRect(0, 0, w, h);
@@ -51,15 +58,25 @@ void ViewerMap::resizeGL(int w, int h)
 void ViewerMap::updateMapTiles()
 {
     mapTiles[currentZoom].clear();
-    rectCurrentLatLon = mapTileLoader.startDownloadTiles(centerLatLon, currentZoom, rect());
+    sizeScrLatLon = mapTileLoader.startDownloadTiles(centerLatLon, currentZoom, rect());
 }
 
-QPointF ViewerMap::convPixToCoord(QPoint pt)
+bool ViewerMap::convPixToCoord(const QPoint &pix, QPointF &coord)
 {
-    QPointF coord((pt.x() / static_cast<float>(rect().width())) * rectCurrentLatLon.width(),
-                  (pt.y() / static_cast<float>(rect().height())) * rectCurrentLatLon.height());
+    bool ret = false;
 
-    return coord;
+    for (MAP_TILES::iterator iter = mapTiles[currentZoom].begin(); iter != mapTiles[currentZoom].end(); ++iter) {
+        if (iter.value().first.contains(pix)) {
+            auto rectImg = iter.value().first;
+            auto rectCoord = iter.value().second;
+            coord.setX(rectCoord.left() + (pix.x() - rectImg.left()) / static_cast<float>(rectImg.width()) * rectCoord.width());
+            coord.setY(rectCoord.top() - (pix.y() - rectImg.top()) / static_cast<float>(rectImg.height()) * abs(rectCoord.height()));
+            ret = true;
+            break;
+        }
+    }
+
+    return ret;
 }
 
 //void ViewerMap::convScreenPosToLatLon(QPointF pos, double &lat, double &lon)
@@ -96,9 +113,9 @@ QPointF ViewerMap::convPixToCoord(QPoint pt)
 //    dstLon *= RadToDeg;
 //}
 
-void ViewerMap::downloadedMapTile(QString imgFilePath, QRect rectImg, int zoom)
+void ViewerMap::downloadedMapTile(QString imgFilePath, QRect rectImg, QRectF rectCoord, int zoom)
 {
-    mapTiles[zoom].insert(imgFilePath, rectImg);
+    mapTiles[zoom].insert(imgFilePath, qMakePair(rectImg, rectCoord));
 
     // Save cache image
     if (mapTileLoader.isDownloading()) {
@@ -118,19 +135,26 @@ void ViewerMap::paintEvent(QPaintEvent *event)
     QPainter p(this);
     p.beginNativePainting();
 
-    // Draw map tiles
-    p.fillRect(rect(), Qt::black);
+    p.fillRect(rect(), Qt::gray);
 
+    // Draw chache map, during downloading
     if (mapTileLoader.isDownloading()) {
         p.drawImage(rectCacheMap, imgCacheMap);
     }
+    // copy cache map, when download finished
     else {
         imgCacheMap = imgTempMap;
-        qDebug() << "Save";
     }
 
-    for (QMap<QString, QRect>::iterator iter = mapTiles[currentZoom].begin(); iter != mapTiles[currentZoom].end(); ++iter) {
-        p.drawImage(iter.value(), QImage(iter.key()));
+    p.setPen(Qt::gray);
+    // Draw map tiles
+    for (MAP_TILES::iterator iter = mapTiles[currentZoom].begin(); iter != mapTiles[currentZoom].end(); ++iter) {
+        p.drawImage(iter.value().first, QImage(iter.key()));
+
+        // Draw grid
+        if (showGrid) {
+            p.drawRect(iter.value().first);
+        }
     }
 
     // Current mouse position
@@ -148,19 +172,36 @@ bool ViewerMap::eventFilter(QObject *watched, QEvent *event)
     if (watched == this && event->type() == QEvent::MouseMove) {
         auto posMouse = static_cast<QMouseEvent *>(event)->pos();
         if (dragMap) {
-            auto dragDelta = posMouse - dragMapStart;
-            auto dragCoord = convPixToCoord(dragDelta);
-            centerLatLon -= dragCoord;
+            auto deltaScr = posMouse - dragMapStart;
+
+            centerLatLon -= QPointF((deltaScr.x() / static_cast<float>(width())) * sizeScrLatLon.width(),
+                          (-deltaScr.y() / static_cast<float>(height())) * sizeScrLatLon.height());
+
+            if (centerLatLon.x() > 180) {
+                centerLatLon.setX(centerLatLon.x() - 360);
+            }
+            if (centerLatLon.x() < -180) {
+                centerLatLon.setX(centerLatLon.x() + 360);
+            }
+            if (centerLatLon.y() > 90) {
+                centerLatLon.setY(centerLatLon.y() - 180);
+            }
+            if (centerLatLon.y() < -90) {
+                centerLatLon.setY(centerLatLon.y() + 180);
+            }
+
+            dragMapStart = posMouse;
             rectCacheMap.setSize(rect().size());
             rectCacheMap.moveCenter(posMouse);
             updateMapTiles();
             update();
-
-            dragMapStart = posMouse;
         }
         else {
-            mouseLatLon = convPixToCoord(posMouse) + rectCurrentLatLon.topLeft();
-//            update();
+            QPointF latLon;
+            if (convPixToCoord(posMouse, latLon)) {
+                mouseLatLon = latLon;
+            }
+            update();
         }
 
         return true;
@@ -170,7 +211,7 @@ bool ViewerMap::eventFilter(QObject *watched, QEvent *event)
 
 void ViewerMap::mousePressEvent(QMouseEvent *event)
 {
-    if (event->button() == Qt::RightButton) {
+    if (event->button() == Qt::LeftButton) {
         dragMap = true;
         dragMapStart = event->pos();
 
@@ -195,7 +236,18 @@ void ViewerMap::mouseReleaseEvent(QMouseEvent *event)
 
 void ViewerMap::mouseDoubleClickEvent(QMouseEvent *event)
 {
+    Q_UNUSED(event);
 
+    if (event->button() == Qt::LeftButton) {
+        QPointF newCenterLatLon;
+        if (convPixToCoord(event->pos(), newCenterLatLon)) {
+            centerLatLon = newCenterLatLon;
+            rectCacheMap.setSize(rect().size());
+            rectCacheMap.moveCenter(event->pos());
+            updateMapTiles();
+            update();
+        }
+    }
 }
 
 void ViewerMap::wheelEvent(QWheelEvent *event)
@@ -209,7 +261,7 @@ void ViewerMap::wheelEvent(QWheelEvent *event)
             currentZoom--;
         }
 
-        if (currentZoom < 4)            currentZoom = 4;
+        if (currentZoom < 3)            currentZoom = 3;
         else if (currentZoom > maxZoom) currentZoom = maxZoom;
 
         if (previousZoom != currentZoom) {

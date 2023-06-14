@@ -17,8 +17,8 @@
    <layout class="QGridLayout" name="gridLayout_2">
     <item row="0" column="0">
      <layout class="QGridLayout" name="gridLayout">
-      <item row="7" column="0">
-       <widget class="QLabel" name="label_3">
+      <item row="0" column="0" colspan="3">
+       <widget class="QLabel" name="label">
         <property name="sizePolicy">
          <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
           <horstretch>0</horstretch>
@@ -26,51 +26,11 @@
          </sizepolicy>
         </property>
         <property name="text">
-         <string>Latitude:</string>
+         <string>Map Tile server:</string>
         </property>
        </widget>
       </item>
-      <item row="8" column="0">
-       <widget class="QLabel" name="label_4">
-        <property name="sizePolicy">
-         <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
-          <horstretch>0</horstretch>
-          <verstretch>0</verstretch>
-         </sizepolicy>
-        </property>
-        <property name="text">
-         <string>Longitude:</string>
-        </property>
-       </widget>
-      </item>
-      <item row="2" column="0" colspan="3">
-       <widget class="Line" name="line">
-        <property name="orientation">
-         <enum>Qt::Horizontal</enum>
-        </property>
-       </widget>
-      </item>
-      <item row="4" column="0" colspan="3">
-       <widget class="Line" name="line_2">
-        <property name="orientation">
-         <enum>Qt::Horizontal</enum>
-        </property>
-       </widget>
-      </item>
-      <item row="3" column="0">
-       <widget class="QLabel" name="label_5">
-        <property name="sizePolicy">
-         <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
-          <horstretch>0</horstretch>
-          <verstretch>0</verstretch>
-         </sizepolicy>
-        </property>
-        <property name="text">
-         <string>Coordinate: </string>
-        </property>
-       </widget>
-      </item>
-      <item row="7" column="2" rowspan="2">
+      <item row="8" column="2" rowspan="2">
        <widget class="QPushButton" name="pushButtonUpdateLocation">
         <property name="sizePolicy">
          <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
@@ -80,6 +40,42 @@
         </property>
         <property name="text">
          <string>Update</string>
+        </property>
+       </widget>
+      </item>
+      <item row="7" column="0" colspan="3">
+       <widget class="QLabel" name="label_2">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
+        <property name="text">
+         <string>Current Position</string>
+        </property>
+       </widget>
+      </item>
+      <item row="5" column="0" colspan="3">
+       <widget class="Line" name="line_2">
+        <property name="orientation">
+         <enum>Qt::Horizontal</enum>
+        </property>
+       </widget>
+      </item>
+      <item row="9" column="1">
+       <widget class="FormCoordinate" name="widgetCurrentLon" native="true"/>
+      </item>
+      <item row="9" column="0">
+       <widget class="QLabel" name="label_4">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
+        <property name="text">
+         <string>Longitude:</string>
         </property>
        </widget>
       </item>
@@ -116,8 +112,8 @@
         </item>
        </layout>
       </item>
-      <item row="6" column="0" colspan="3">
-       <widget class="QLabel" name="label_2">
+      <item row="8" column="0">
+       <widget class="QLabel" name="label_3">
         <property name="sizePolicy">
          <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
           <horstretch>0</horstretch>
@@ -125,11 +121,21 @@
          </sizepolicy>
         </property>
         <property name="text">
-         <string>Current Position</string>
+         <string>Latitude:</string>
         </property>
        </widget>
       </item>
-      <item row="5" column="0">
+      <item row="2" column="0" colspan="3">
+       <widget class="Line" name="line">
+        <property name="orientation">
+         <enum>Qt::Horizontal</enum>
+        </property>
+       </widget>
+      </item>
+      <item row="8" column="1">
+       <widget class="FormCoordinate" name="widgetCurrentLat" native="true"/>
+      </item>
+      <item row="6" column="0">
        <spacer name="verticalSpacer_2">
         <property name="orientation">
          <enum>Qt::Vertical</enum>
@@ -152,8 +158,8 @@
         </property>
        </widget>
       </item>
-      <item row="0" column="0" colspan="3">
-       <widget class="QLabel" name="label">
+      <item row="3" column="0">
+       <widget class="QLabel" name="label_5">
         <property name="sizePolicy">
          <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
           <horstretch>0</horstretch>
@@ -161,15 +167,29 @@
          </sizepolicy>
         </property>
         <property name="text">
-         <string>Map Tile server:</string>
+         <string>Coordinate: </string>
         </property>
        </widget>
       </item>
-      <item row="7" column="1">
-       <widget class="FormCoordinate" name="widgetCurrentLat" native="true"/>
+      <item row="4" column="0">
+       <widget class="QLabel" name="label_6">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
+        <property name="text">
+         <string>Grid:</string>
+        </property>
+       </widget>
       </item>
-      <item row="8" column="1">
-       <widget class="FormCoordinate" name="widgetCurrentLon" native="true"/>
+      <item row="4" column="1" colspan="2">
+       <widget class="QCheckBox" name="checkBoxShowGrid">
+        <property name="text">
+         <string>show</string>
+        </property>
+       </widget>
       </item>
      </layout>
     </item>

@@ -3,7 +3,7 @@
 #include <QList>
 
 QList<FormCoordinate *> coordWidgetList;
-int coordType = COORD_TYPE_DEG;
+int coordType = COORD_SHOW_DEG;
 
 void registerCoordinateWidget(FormCoordinate *w)
 {
@@ -15,7 +15,7 @@ void setCoordType(int type)
     coordType = type;
 
     foreach (auto w, coordWidgetList) {
-        w->setType(coordType);
+        w->setShowType(coordType);
     }
 }
 
@@ -23,7 +23,7 @@ QString getCoordString(float value)
 {
     QString str;
 
-    if (coordType == COORD_TYPE_DEG) {
+    if (coordType == COORD_SHOW_DEG) {
         str = QString("%1°").arg(value, 0, 'f', 8, QLatin1Char('0'));
     }
     else {

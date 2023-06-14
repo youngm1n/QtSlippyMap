@@ -6,6 +6,8 @@
 
 #include "maptileloader.h"
 
+typedef QMap<QString, QPair<QRect, QRectF>> MAP_TILES;
+
 class ViewerMap : public QOpenGLWidget
 {
     Q_OBJECT
@@ -15,12 +17,15 @@ public:
     void setInitTileMap(const QString &url, const int maxZoomLevel);
     void setCurrentLocation(float newCurrentLat, float newCurrentLon);
 
+public slots:
+    void setShowGrid(bool newShowGrid);
+
 private:
     void updateMapTiles();
-    QPointF convPixToCoord(QPoint pt);
+    bool convPixToCoord(const QPoint &pix, QPointF &coord);
 
 private slots:
-    void downloadedMapTile(QString imgFilePath, QRect rectScr, int zoom);
+    void downloadedMapTile(QString imgFilePath, QRect rectScr, QRectF rectCoord, int zoom);
 
 signals:
     void updateCurrentLocation(float latitude, float longitude);
@@ -28,15 +33,14 @@ signals:
 private:
     // Map tile parameters
     MapTileLoader mapTileLoader;
-    QMap<QString, QRect> *mapTiles;
-    QMap<QImage, QRect> mapTemp;
+    MAP_TILES *mapTiles;
     QImage imgTempMap;
     QImage imgCacheMap;
     QRect rectCacheMap;
 
     // Position (real lat/lon)
     QPointF centerLatLon;
-    QRectF rectCurrentLatLon;
+    QSizeF sizeScrLatLon;
     QPointF mouseLatLon;
 
     // drawing parameters
@@ -45,6 +49,7 @@ private:
     int maxZoom;
     bool dragMap;
     QPoint dragMapStart;
+    bool showGrid;
 
     // QObject interface
 public:

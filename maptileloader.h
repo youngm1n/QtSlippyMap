@@ -18,9 +18,10 @@
 class ImageDownloadReq
 {
 public:
-    explicit ImageDownloadReq(QString newFilePath, QRect newRect, int newZoom, QString url) {
+    explicit ImageDownloadReq(QString newFilePath, QRect newRectImg, QRectF newRectCoord, int newZoom, QString url) {
         filePath = newFilePath;
-        rect = newRect;
+        rectImg = newRectImg;
+        rectCoord = newRectCoord;
         zoom = newZoom;
         req.setUrl(QUrl(url));
         req.setRawHeader("User-Agent", "The Qt Company (Qt) Graphics Dojo 1.0");
@@ -28,13 +29,15 @@ public:
 
     QNetworkRequest getNetworkReq() { return req; }
     QString getFilePath()   { return filePath; }
-    QRect getImgRect()      { return rect; }
+    QRect getImgRect()      { return rectImg; }
+    QRectF getCoordRect()   { return rectCoord; }
     int getZoom()           { return zoom; }
 
 private:
     QNetworkRequest req;
     QString filePath;
-    QRect rect;
+    QRect rectImg;
+    QRectF rectCoord;
     int zoom;
 };
 
@@ -48,23 +51,25 @@ public:
 
     void setUrlTileMap(const QString &newUrlTileMap);
     void resetDownloadQueue();
-    QRectF startDownloadTiles(QPointF center, int zoom, QRect rect);
+    QSizeF startDownloadTiles(QPointF center, int zoom, QRect rect);
     bool isDownloading();
 
 private:
-    int longitudeToTileX(float lon, int zoom);
-    int latitudeToTileY(float lat, int zoom);
-    float tileXtoLongitude(int x, int zoom);
-    float tileYtoLatitude(int y, int zoom);
+    int longitudeToTileX(double lon, int zoom);
+    int latitudeToTileY(double lat, int zoom);
+    double tileXtoLongitude(int x, int zoom);
+    double tileYtoLatitude(int y, int zoom);
 
     void getMapTile(int zoom, int x, int y, QRect rectScr);
+    QPointF convPixToCoord(const int &zoom, const int &x, const int &y, QRect scrRect, QPoint pix);
+    int rescaleTileIndex(const int &no, const int &maxNo);
 
 private slots:
     void timeoutDownloadQueue();
     void replyDownloadReq();
 
 signals:
-    void downloadedMapTile(QString imgFilePath, QRect rectImg, int zoom);
+    void downloadedMapTile(QString imgFilePath, QRect rectImg, QRectF rectCoord, int zoom);
 
 private:
     QString urlTileMap;
