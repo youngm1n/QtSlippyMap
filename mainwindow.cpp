@@ -17,6 +17,7 @@ MainWindow::MainWindow(QWidget *parent)
     ui->comboBoxTileMapUrl->addItem("https://b.tile.openstreetmap.org", 19);
     ui->comboBoxTileMapUrl->addItem("https://c.tile.openstreetmap.org", 19);
     ui->comboBoxTileMapUrl->addItem("https://d.tile.openstreetmap.org", 19);
+    ui->comboBoxTileMapUrl->addItem("https://tile.thunderforest.com/cycle", 22);
     ui->comboBoxTileMapUrl->setCurrentIndex(0);
 
     // Coordinate type
@@ -43,7 +44,7 @@ MainWindow::MainWindow(QWidget *parent)
     connect(ui->pushButtonUpdateLocation, &QPushButton::pressed, this, [&]() {
         ui->openGLWidgetMapView->setCurrentLocation(ui->widgetCurrentLat->getValue(), ui->widgetCurrentLon->getValue());
     });
-    ui->pushButtonUpdateLocation->pressed();
+    emit ui->pushButtonUpdateLocation->pressed();
 }
 
 MainWindow::~MainWindow()

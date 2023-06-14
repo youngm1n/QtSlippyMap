@@ -38,7 +38,7 @@ private:
     int zoom;
 };
 
-#define MAX_NAM_COUNT   30
+#define MAX_NAM_COUNT   2
 
 class MapTileLoader : public QObject
 {
@@ -47,7 +47,9 @@ public:
     explicit MapTileLoader(QObject *parent = nullptr);
 
     void setUrlTileMap(const QString &newUrlTileMap);
+    void resetDownloadQueue();
     QRectF startDownloadTiles(QPointF center, int zoom, QRect rect);
+    bool isDownloading();
 
 private:
     int longitudeToTileX(float lon, int zoom);
@@ -55,10 +57,11 @@ private:
     float tileXtoLongitude(int x, int zoom);
     float tileYtoLatitude(int y, int zoom);
 
-    bool getMapTile(int zoom, int x, int y, QRect rectScr);
+    void getMapTile(int zoom, int x, int y, QRect rectScr);
 
 private slots:
     void timeoutDownloadQueue();
+    void replyDownloadReq();
 
 signals:
     void downloadedMapTile(QString imgFilePath, QRect rectImg, int zoom);
@@ -70,6 +73,9 @@ private:
     QNetworkAccessManager nam[MAX_NAM_COUNT];   // Crashed, when the number is over 30 (windows is ok, but only linux)--> Why?
     QTimer timerDownloadQue[MAX_NAM_COUNT];
     QQueue<ImageDownloadReq> queDownloadReq;
+
+    int totalDownloadCount;
+    int curDownloadedCount;
 
 signals:
 };

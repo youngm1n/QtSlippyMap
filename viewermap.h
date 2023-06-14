@@ -29,12 +29,15 @@ private:
     // Map tile parameters
     MapTileLoader mapTileLoader;
     QMap<QString, QRect> *mapTiles;
+    QMap<QImage, QRect> mapTemp;
+    QImage imgTempMap;
+    QImage imgCacheMap;
+    QRect rectCacheMap;
 
     // Position (real lat/lon)
     QPointF centerLatLon;
     QRectF rectCurrentLatLon;
     QPointF mouseLatLon;
-
 
     // drawing parameters
     int currentZoom;
@@ -48,6 +51,7 @@ public:
     bool eventFilter(QObject *watched, QEvent *event);
 
 protected:
+//    void paintGL();
     void paintEvent(QPaintEvent *event);
     void mousePressEvent(QMouseEvent *event);
     void mouseReleaseEvent(QMouseEvent *event);

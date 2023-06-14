@@ -21,11 +21,12 @@ ViewerMap::ViewerMap(QWidget *parent) : QOpenGLWidget(parent)
 
 void ViewerMap::setInitTileMap(const QString &url, const int newMaxZoom)
 {
-    maxZoom = newMaxZoom;
     if (mapTiles) {
         delete [] mapTiles;
     }
-    mapTiles = new QMap<QString, QRect>[maxZoom];
+
+    maxZoom = newMaxZoom;
+    mapTiles = new QMap<QString, QRect>[maxZoom + 1];
 
     mapTileLoader.setUrlTileMap(url);
     updateMapTiles();
@@ -42,8 +43,8 @@ void ViewerMap::setCurrentLocation(float newCurrentLat, float newCurrentLon)
 
 void ViewerMap::resizeGL(int w, int h)
 {
-    Q_UNUSED(w);
-    Q_UNUSED(h);
+    rectCacheMap = QRect(0, 0, w, h);
+    imgTempMap = QImage(QSize(w, h), QImage::Format_RGB32);
     updateMapTiles();
 }
 
@@ -95,9 +96,18 @@ QPointF ViewerMap::convPixToCoord(QPoint pt)
 //    dstLon *= RadToDeg;
 //}
 
-void ViewerMap::downloadedMapTile(QString imgFilePath, QRect rectScr, int zoom)
+void ViewerMap::downloadedMapTile(QString imgFilePath, QRect rectImg, int zoom)
 {
-    mapTiles[zoom].insert(imgFilePath, rectScr);
+    mapTiles[zoom].insert(imgFilePath, rectImg);
+
+    // Save cache image
+    if (mapTileLoader.isDownloading()) {
+        QPainter p(&imgTempMap);
+        p.beginNativePainting();
+        p.drawImage(rectImg, QImage(imgFilePath));
+        p.endNativePainting();
+    }
+
     update();
 }
 
@@ -105,10 +115,20 @@ void ViewerMap::paintEvent(QPaintEvent *event)
 {
     Q_UNUSED(event);
 
-    QPainter p;
-    p.begin(this);
+    QPainter p(this);
+    p.beginNativePainting();
 
     // Draw map tiles
+    p.fillRect(rect(), Qt::black);
+
+    if (mapTileLoader.isDownloading()) {
+        p.drawImage(rectCacheMap, imgCacheMap);
+    }
+    else {
+        imgCacheMap = imgTempMap;
+        qDebug() << "Save";
+    }
+
     for (QMap<QString, QRect>::iterator iter = mapTiles[currentZoom].begin(); iter != mapTiles[currentZoom].end(); ++iter) {
         p.drawImage(iter.value(), QImage(iter.key()));
     }
@@ -120,7 +140,7 @@ void ViewerMap::paintEvent(QPaintEvent *event)
     auto rectLatLon = QRect(QPoint(rect().bottomLeft()) - QPoint(0, sizeStrLatLon.height()), sizeStrLatLon);
     p.drawText(rectLatLon, strLatLon);
 
-    p.end();
+    p.endNativePainting();
 }
 
 bool ViewerMap::eventFilter(QObject *watched, QEvent *event)
@@ -131,6 +151,8 @@ bool ViewerMap::eventFilter(QObject *watched, QEvent *event)
             auto dragDelta = posMouse - dragMapStart;
             auto dragCoord = convPixToCoord(dragDelta);
             centerLatLon -= dragCoord;
+            rectCacheMap.setSize(rect().size());
+            rectCacheMap.moveCenter(posMouse);
             updateMapTiles();
             update();
 
@@ -138,7 +160,7 @@ bool ViewerMap::eventFilter(QObject *watched, QEvent *event)
         }
         else {
             mouseLatLon = convPixToCoord(posMouse) + rectCurrentLatLon.topLeft();
-            update();
+//            update();
         }
 
         return true;
@@ -151,6 +173,8 @@ void ViewerMap::mousePressEvent(QMouseEvent *event)
     if (event->button() == Qt::RightButton) {
         dragMap = true;
         dragMapStart = event->pos();
+
+        setCursor(QCursor(Qt::ClosedHandCursor));
     }
 
     update();
@@ -162,6 +186,8 @@ void ViewerMap::mouseReleaseEvent(QMouseEvent *event)
     if (dragMap) {
         dragMap = false;
         emit updateCurrentLocation(centerLatLon.y(), centerLatLon.x());
+
+        setCursor(QCursor(Qt::ArrowCursor));
     }
 
     update();
@@ -174,20 +200,30 @@ void ViewerMap::mouseDoubleClickEvent(QMouseEvent *event)
 
 void ViewerMap::wheelEvent(QWheelEvent *event)
 {
-    previousZoom = currentZoom;
-    if (event->angleDelta().y() > 0) {
-        currentZoom++;
-    }
-    else {
-        currentZoom--;
-    }
+    if (!mapTileLoader.isDownloading()) {
+        previousZoom = currentZoom;
+        if (event->angleDelta().y() > 0) {
+            currentZoom++;
+        }
+        else {
+            currentZoom--;
+        }
 
-    if (currentZoom < 4)            currentZoom = 4;
-    else if (currentZoom > maxZoom) currentZoom = maxZoom;
+        if (currentZoom < 4)            currentZoom = 4;
+        else if (currentZoom > maxZoom) currentZoom = maxZoom;
 
-    if (previousZoom != currentZoom) {
-        updateMapTiles();
-        update();
+        if (previousZoom != currentZoom) {
+            if (currentZoom > previousZoom) {
+                rectCacheMap.setSize(rect().size() * 2);
+            }
+            else {
+                rectCacheMap.setSize(rect().size() / 2);
+            }
+            rectCacheMap.moveCenter(rect().center());
+
+            updateMapTiles();
+            update();
+        }
     }
 }
 
