@@ -19,18 +19,18 @@ void setCoordType(int type)
     }
 }
 
-QString getCoordString(float value)
+QString getCoordString(float value, int type)
 {
     QString str;
-
+    QString sign = value > 0 ? (type == COORD_TYPE_LAT ? "N" : "E") : (type == COORD_TYPE_LAT ? "S" : "W");
     if (coordType == COORD_SHOW_DEG) {
-        str = QString("%1°").arg(value, 0, 'f', 8, QLatin1Char('0'));
+        str = sign + QString(" %1°").arg(abs(value), 0, 'f', 8, QLatin1Char('0'));
     }
     else {
         int deg, min;
         float sec;
         convDegToDms(value, deg, min, sec);
-        str = QString("%1° %2\' %3\"").arg(deg).arg(min, 2, 10, QLatin1Char('0')).arg(sec, 0, 'f', 2, QLatin1Char('0'));
+        str = sign + QString(" %1° %2\' %3\"").arg(abs(deg)).arg(min, 2, 10, QLatin1Char('0')).arg(sec, 0, 'f', 1, QLatin1Char('0'));
     }
 
     return str;

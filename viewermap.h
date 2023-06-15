@@ -18,7 +18,8 @@ public:
     void setCurrentLocation(float newCurrentLat, float newCurrentLon);
 
 public slots:
-    void setShowGrid(bool newShowGrid);
+    void setShowGridCenter(bool showGrid);
+    void setShowGridTiles(bool showGrid);
 
 private:
     void updateMapTiles();
@@ -49,7 +50,8 @@ private:
     int maxZoom;
     bool dragMap;
     QPoint dragMapStart;
-    bool showGrid;
+    bool showGridCenter;
+    bool showGridTiles;
 
     // QObject interface
 public:

@@ -8,7 +8,6 @@ FormCoordinate::FormCoordinate(QWidget *parent) :
     ui(new Ui::FormCoordinate)
 {
     ui->setupUi(this);
-
     connectItems(true);
 }
 
@@ -87,25 +86,44 @@ void FormCoordinate::setValue(float newValue)
 void FormCoordinate::connectItems(bool con)
 {
     if (con) {
-        connect(ui->spinBoxDeg, &QSpinBox::valueChanged, this, [&](int) { changeDmsValues(); });
-        connect(ui->spinBoxMin, &QSpinBox::valueChanged, this, [&](int) { changeDmsValues(); });
-        connect(ui->doubleSpinBoxSec, &QDoubleSpinBox::valueChanged, this, [&](double) { changeDmsValues(); });
-        connect(ui->doubleSpinBoxDeg, &QDoubleSpinBox::valueChanged, this, [&](double value) {
-            int deg = 0, min = 0;
-            float sec = 0;
-            convDegToDms(value, deg, min, sec);
-
-            ui->spinBoxDeg->setValue(deg);
-            ui->spinBoxMin->setValue(min);
-            ui->doubleSpinBoxSec->setValue(sec);
-        });
+        connect(ui->spinBoxDeg, SIGNAL(valueChanged(int)), this, SLOT(changeDmsValues(int)));
+        connect(ui->spinBoxMin, SIGNAL(valueChanged(int)), this, SLOT(changeDmsValues(int)));
+        connect(ui->doubleSpinBoxSec, SIGNAL(valueChanged(double)), this, SLOT(changeDmsValues(double)));
+        connect(ui->doubleSpinBoxDeg, &QDoubleSpinBox::valueChanged, this, &FormCoordinate::changeDegValue);
+    }
+    else {
+        disconnect(ui->spinBoxDeg, SIGNAL(valueChanged(int)), this, SLOT(changeDmsValues(int)));
+        disconnect(ui->spinBoxMin, SIGNAL(valueChanged(int)), this, SLOT(changeDmsValues(int)));
+        disconnect(ui->doubleSpinBoxSec, SIGNAL(valueChanged(double)), this, SLOT(changeDmsValues(double)));
+        disconnect(ui->doubleSpinBoxDeg, &QDoubleSpinBox::valueChanged, this, &FormCoordinate::changeDegValue);
     }
 }
 
-void FormCoordinate::changeDmsValues()
+void FormCoordinate::changeDmsValues(int arg)
 {
+    Q_UNUSED(arg);
     auto value = convDmsToDeg(ui->spinBoxDeg->value(),
                               ui->spinBoxMin->value(),
                               ui->doubleSpinBoxSec->value());
     ui->doubleSpinBoxDeg->setValue(value);
+}
+
+void FormCoordinate::changeDmsValues(double arg)
+{
+    changeDmsValues(static_cast<int>(arg));
+}
+
+void FormCoordinate::changeDegValue(double value)
+{
+    connectItems(false);
+
+    int deg = 0, min = 0;
+    float sec = 0;
+    convDegToDms(value, deg, min, sec);
+
+    ui->spinBoxDeg->setValue(deg);
+    ui->spinBoxMin->setValue(min);
+    ui->doubleSpinBoxSec->setValue(sec);
+
+    connectItems(true);
 }

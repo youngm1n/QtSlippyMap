@@ -49,8 +49,9 @@ MainWindow::MainWindow(QWidget *parent)
     });
     emit ui->pushButtonUpdateLocation->pressed();
 
-    // Init grid control
-    connect(ui->checkBoxShowGrid, &QCheckBox::toggled, ui->openGLWidgetMapView, &ViewerMap::setShowGrid);
+    // Init grid show
+    connect(ui->checkBoxGridShowCenter, &QCheckBox::toggled, ui->openGLWidgetMapView, &ViewerMap::setShowGridCenter);
+    connect(ui->checkBoxGridShowTiles, &QCheckBox::toggled, ui->openGLWidgetMapView, &ViewerMap::setShowGridTiles);
 }
 
 MainWindow::~MainWindow()

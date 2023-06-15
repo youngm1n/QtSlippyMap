@@ -25,7 +25,9 @@ private:
     void connectItems(bool con);
 
 private slots:
-    void changeDmsValues();
+    void changeDmsValues(int arg);
+    void changeDmsValues(double arg);
+    void changeDegValue(double value);
 
 private:
     Ui::FormCoordinate *ui;

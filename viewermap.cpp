@@ -15,7 +15,7 @@ ViewerMap::ViewerMap(QWidget *parent) : QOpenGLWidget(parent)
     mapTiles = nullptr;
     currentZoom = previousZoom = 10;
     dragMap = false;
-    showGrid = false;
+    showGridCenter = showGridTiles = false;
 
     connect(&mapTileLoader, &MapTileLoader::downloadedMapTile, this, &ViewerMap::downloadedMapTile);
 }
@@ -42,9 +42,15 @@ void ViewerMap::setCurrentLocation(float newCurrentLat, float newCurrentLon)
     centerLatLon.setY(newCurrentLat);
 }
 
-void ViewerMap::setShowGrid(bool newShowGrid)
+void ViewerMap::setShowGridCenter(bool showGrid)
 {
-    showGrid = newShowGrid;
+    showGridCenter = showGrid;
+    update();
+}
+
+void ViewerMap::setShowGridTiles(bool showGrid)
+{
+    showGridTiles = showGrid;
     update();
 }
 
@@ -134,7 +140,6 @@ void ViewerMap::paintEvent(QPaintEvent *event)
 
     QPainter p(this);
     p.beginNativePainting();
-
     p.fillRect(rect(), Qt::gray);
 
     // Draw chache map, during downloading
@@ -146,20 +151,44 @@ void ViewerMap::paintEvent(QPaintEvent *event)
         imgCacheMap = imgTempMap;
     }
 
-    p.setPen(Qt::gray);
     // Draw map tiles
     for (MAP_TILES::iterator iter = mapTiles[currentZoom].begin(); iter != mapTiles[currentZoom].end(); ++iter) {
         p.drawImage(iter.value().first, QImage(iter.key()));
+    }
 
-        // Draw grid
-        if (showGrid) {
-            p.drawRect(iter.value().first);
+    // Draw map tiles grid
+    if (showGridTiles) {
+        p.setPen(QPen(Qt::gray, 1.0f, Qt::DotLine));
+        for (MAP_TILES::iterator iter = mapTiles[currentZoom].begin(); iter != mapTiles[currentZoom].end(); ++iter) {
+            auto rectTile = iter.value().first;
+            auto rectGrid = rectTile;
+            auto pos = iter.value().second;
+            if (rectTile.top() <= 0 && rectTile.left() >= 0) {
+                rectGrid.moveTop(0);
+                p.drawText(rectGrid, Qt::AlignTop | Qt::AlignLeft, getCoordString(pos.left(), COORD_TYPE_LON));
+                p.drawLine(rectGrid.left(), 0, rectGrid.left(), height());
+            }
+            if (rectTile.top() >= 0 && rectTile.left() <= 0 && rectTile.right() >= 0) {
+                rectGrid.moveLeft(0);
+                p.drawText(rectGrid, Qt::AlignTop | Qt::AlignLeft, getCoordString(pos.top(), COORD_TYPE_LAT));
+                p.drawLine(0, rectGrid.top(), width(), rectGrid.top());
+            }
         }
+    }
+
+    // Draw center grid
+    if (showGridCenter) {
+        p.setPen(QPen(Qt::red, 2, Qt::DashLine));
+        p.drawLine(rect().center().x(), 0, rect().center().x(), height());
+        p.drawText(rect().center().x(), 0, width(), height(), Qt::AlignTop, " " + getCoordString(centerLatLon.x(), COORD_TYPE_LON));
+        p.drawLine(0, rect().center().y(), width(), rect().center().y());
+        p.drawText(0, height() / 2, width(), height() / 2, Qt::AlignTop | Qt::AlignRight, getCoordString(centerLatLon.y(), COORD_TYPE_LAT) + " ");
     }
 
     // Current mouse position
     p.setPen(Qt::black);
-    auto strLatLon = QString(" %1, %2 ").arg(getCoordString(mouseLatLon.y()), getCoordString(mouseLatLon.x()));
+    auto strLatLon = QString(" %1, %2 ")
+                         .arg(getCoordString(mouseLatLon.y(), COORD_TYPE_LAT), getCoordString(mouseLatLon.x(), COORD_TYPE_LON));
     auto sizeStrLatLon = QFontMetrics(p.font()).boundingRect(strLatLon).size();
     auto rectLatLon = QRect(QPoint(rect().bottomLeft()) - QPoint(0, sizeStrLatLon.height()), sizeStrLatLon);
     p.drawText(rectLatLon, strLatLon);
