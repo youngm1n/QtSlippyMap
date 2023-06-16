@@ -33,8 +33,10 @@ ViewerMap::ViewerMap(QWidget *parent) : QOpenGLWidget(parent)
     connect(action, &QAction::triggered, this, &ViewerMap::triggeredMenuAction);
 
     dlgMeas = new DialogMeasureDistance(this);
+    dlgMeas->hide();
     dlgMeas->setWindowFlag(Qt::FramelessWindowHint);
-    connect(dlgMeas, &DialogMeasureDistance::clearList, this, [&]() { setCursor(QCursor(Qt::CrossCursor)); });
+    dlgMeas->setWindowFlag(Qt::WindowStaysOnTopHint);
+    connect(dlgMeas, &DialogMeasureDistance::clearList, this, [&]() { setCursor(QCursor(Qt::ArrowCursor)); });
 
     // connect image download function to maptileloader
     connect(&mapTileLoader, &MapTileLoader::downloadedMapTile, this, &ViewerMap::downloadedMapTile);
@@ -336,7 +338,6 @@ void ViewerMap::mouseReleaseEvent(QMouseEvent *event)
     if (!dragMap && dlgMeas->isVisible()) {
         if (event->button() == Qt::LeftButton) {
             setCursor(QCursor(Qt::CrossCursor));
-
             addMeasurePoint(event->pos());
         }
     }
@@ -345,6 +346,10 @@ void ViewerMap::mouseReleaseEvent(QMouseEvent *event)
     if (dragMap) {
         dragMap = false;
         emit updateCurrentLocation(centerLatLon.y(), centerLatLon.x());
+    }
+
+    // Reset mouse cursor
+    if (!dlgMeas->isVisible()) {
         setCursor(QCursor(Qt::ArrowCursor));
     }
 
@@ -401,6 +406,7 @@ void ViewerMap::triggeredMenuAction(bool checked)
     Q_UNUSED(checked);
     auto action = reinterpret_cast<QAction *>(sender());
     if (action->text().contains("Measure Distance")) {
+        setCursor(QCursor(Qt::CrossCursor));
         addMeasurePoint(menu.geometry().topLeft());
         dlgMeas->show();
     }
