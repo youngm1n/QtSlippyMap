@@ -9,6 +9,7 @@ CONFIG += c++17
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
 
 SOURCES += \
+    dialogmeasuredistance.cpp \
     formcoordinate.cpp \
     global.cpp \
     main.cpp \
@@ -17,6 +18,7 @@ SOURCES += \
     viewermap.cpp
 
 HEADERS += \
+    dialogmeasuredistance.h \
     formcoordinate.h \
     global.h \
     mainwindow.h \
@@ -24,6 +26,7 @@ HEADERS += \
     viewermap.h
 
 FORMS += \
+    dialogmeasuredistance.ui \
     formcoordinate.ui \
     mainwindow.ui
 

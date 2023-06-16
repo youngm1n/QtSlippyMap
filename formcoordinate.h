@@ -32,6 +32,7 @@ private slots:
 private:
     Ui::FormCoordinate *ui;
 
+    int baseWidth;
     int showType;
     int latLonType;
     float value;

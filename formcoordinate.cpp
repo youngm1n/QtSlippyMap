@@ -16,29 +16,18 @@ FormCoordinate::~FormCoordinate()
     delete ui;
 }
 
+
 void FormCoordinate::setShowType(int newShowType)
 {
     showType = newShowType;
 
     if (showType == COORD_SHOW_DEG) {
-        ui->labelMin->hide();
-        ui->labelSec->hide();
-
-        ui->spinBoxDeg->hide();
-        ui->spinBoxMin->hide();
-        ui->doubleSpinBoxSec->hide();
-
-        ui->doubleSpinBoxDeg->show();
+        ui->widgetDeg->show();
+        ui->widgetDms->hide();
     }
     else {
-        ui->doubleSpinBoxDeg->hide();
-
-        ui->labelMin->show();
-        ui->labelSec->show();
-
-        ui->spinBoxDeg->show();
-        ui->spinBoxMin->show();
-        ui->doubleSpinBoxSec->show();
+        ui->widgetDeg->hide();
+        ui->widgetDms->show();
     }
 }
 
@@ -127,3 +116,4 @@ void FormCoordinate::changeDegValue(double value)
 
     connectItems(true);
 }
+

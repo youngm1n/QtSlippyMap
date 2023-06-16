@@ -3,8 +3,10 @@
 
 #include <QOpenGLWidget>
 #include <QWidget>
+#include <QMenu>
 
 #include "maptileloader.h"
+#include "dialogmeasuredistance.h"
 
 typedef QMap<QString, QPair<QRect, QRectF>> MAP_TILES;
 
@@ -22,11 +24,21 @@ public slots:
     void setShowGridTiles(bool showGrid);
 
 private:
+    void drawMapTiles(QPainter &p);
+    void drawGridForMapTiles(QPainter &p);
+    void drawGridForCenter(QPainter &p);
+    void drawMeasurement(QPainter &p);
+    void drawInfomation(QPainter &p);
     void updateMapTiles();
+
     bool convPixToCoord(const QPoint &pix, QPointF &coord);
+    QPointF convCoordToPix(const QPointF &coord);
+
+    void addMeasurePoint(QPoint pos);
 
 private slots:
     void downloadedMapTile(QString imgFilePath, QRect rectScr, QRectF rectCoord, int zoom);
+    void triggeredMenuAction(bool checked = false);
 
 signals:
     void updateCurrentLocation(float latitude, float longitude);
@@ -48,10 +60,17 @@ private:
     int currentZoom;
     int previousZoom;
     int maxZoom;
+    int currentMouseBtn;
     bool dragMap;
     QPoint dragMapStart;
     bool showGridCenter;
     bool showGridTiles;
+
+    // Right click menu
+    QMenu menu;
+
+    // Measurement
+    DialogMeasureDistance *dlgMeas;
 
     // QObject interface
 public:
