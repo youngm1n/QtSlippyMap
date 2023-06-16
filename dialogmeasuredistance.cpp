@@ -24,31 +24,38 @@ void DialogMeasureDistance::addMeasurePoint(QPointF pt)
 {
     float dist = 0;
     if (!points.isEmpty()) {
-        dist = getDistanceBetweenCoordinates(pt, points.last());
+        dist = getDistanceBetweenCoordinates(pt, points.last()) + dists.last();
     }
     points.push_back(pt);
     dists.push_back(dist);
 
+    calcTotalDistance();
+}
+
+void DialogMeasureDistance::calcTotalDistance()
+{
     // Get total distance
     float totalDist = 0;
     foreach (auto dist, dists) {
         totalDist += dist;
     }
-    setTotalDistance(totalDist);
+
+    ui->labelDistance->setText(getDitanceString(totalDist));
 }
 
-void DialogMeasureDistance::setTotalDistance(float totalDist)
+QString DialogMeasureDistance::getDitanceString(const float &dist)
 {
     QString strDist;
-
     // Shorter than 10km
-    if (totalDist < 10000) {
-        strDist = QString("%1 m").arg(totalDist, 0, 'f', 0);
+    if (dist < 10000) {
+        strDist = QString("%1 m").arg(dist, 0, 'f', 0);
     }
+    // Longer than 10 km
     else {
-        strDist = QString("%1 km").arg(totalDist / 1000.0f, 0, 'f', 1, QLatin1Char('0'));
+        strDist = QString("%1 km").arg(dist / 1000.0f, 0, 'f', 1, QLatin1Char('0'));
     }
-    ui->labelDistance->setText(strDist);
+
+    return strDist;
 }
 
 QList<float> DialogMeasureDistance::getDistanceList() const

@@ -9,20 +9,21 @@
 #include "global.h"
 
 ViewerMap::ViewerMap(QWidget *parent) : QOpenGLWidget(parent)
+    , mapTiles(nullptr)
+    , currentZoom(10)
+    , previousZoom(10)
+    , dragMap(false)
+    , showGridCenter(false)
+    , showGridTiles(false)
+    , currentMouseBtn(Qt::NoButton)
 {
+    // Install event filter
+    qApp->installEventFilter(this);
+
+    // Set opengl sampling
     QSurfaceFormat f;
     f.setSamples(16);
     setFormat(f);
-
-
-    qApp->installEventFilter(this);
-
-    mapTiles = nullptr;
-    currentZoom = previousZoom = 10;
-    dragMap = false;
-    showGridCenter = showGridTiles = false;
-
-    currentMouseBtn = Qt::NoButton;
 
     // Set right click menu
     menu.setParent(this);
@@ -237,9 +238,7 @@ void ViewerMap::drawMeasurement(QPainter &p)
                     p.translate(rtPt.center());
                     p.rotate(atan2f((scrPt.y() - startScrPt.y()), (scrPt.x() - startScrPt.x())) * RadToDeg);
                     p.translate(-rtPt.center());
-                    p.drawText(rtText,
-                               measDists.at(i) < 10000 ? QString("%1 m").arg(measDists.at(i), 0, 'f', 0) : QString("%1 km").arg(measDists.at(i) / 1000.0f, 0, 'f', 1),
-                               Qt::AlignTop | Qt::AlignHCenter);
+                    p.drawText(rtText, dlgMeas->getDitanceString(measDists.at(i)), Qt::AlignTop | Qt::AlignHCenter);
                     p.resetTransform();
                 }
 
@@ -255,8 +254,7 @@ void ViewerMap::drawInfomation(QPainter &p)
 {
     // Current mouse position
     p.setPen(Qt::black);
-    auto strLatLon = QString(" %1, %2 ")
-                         .arg(getCoordString(mouseLatLon.y(), COORD_TYPE_LAT), getCoordString(mouseLatLon.x(), COORD_TYPE_LON));
+    auto strLatLon = QString(" %1, %2 ").arg(getCoordString(mouseLatLon.y(), COORD_TYPE_LAT), getCoordString(mouseLatLon.x(), COORD_TYPE_LON));
     auto sizeStrLatLon = QFontMetrics(p.font()).boundingRect(strLatLon).size();
     auto rectLatLon = QRect(QPoint(rect().bottomLeft()) - QPoint(0, sizeStrLatLon.height()), sizeStrLatLon);
     p.drawText(rectLatLon, strLatLon);
@@ -266,6 +264,8 @@ bool ViewerMap::eventFilter(QObject *watched, QEvent *event)
 {
     if (watched == this && event->type() == QEvent::MouseMove) {
         auto posMouse = static_cast<QMouseEvent *>(event)->pos();
+
+        // Start drag map
         if (!dragMap && currentMouseBtn == Qt::LeftButton) {
             dragMap = true;
             dragMapStart = posMouse;
@@ -273,6 +273,7 @@ bool ViewerMap::eventFilter(QObject *watched, QEvent *event)
             menu.hide();
         }
 
+        // Drag map
         if (dragMap) {
             auto deltaScr = posMouse - dragMapStart;
 

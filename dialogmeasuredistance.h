@@ -19,10 +19,12 @@ public:
     QList<QPointF> getPointList() const;
     QList<float> getDistanceList() const;
     bool isEmpty();
+    QString getDitanceString(const float &dist);
+
+    float getDistanceBetweenCoordinates(QPointF coordSrc, QPointF coordDst);
 
 private:
-    void setTotalDistance(float newTotalDist);
-    float getDistanceBetweenCoordinates(QPointF coordSrc, QPointF coordDst);
+    void calcTotalDistance();
 
 signals:
     void clearList();

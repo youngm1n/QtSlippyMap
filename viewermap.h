@@ -60,11 +60,11 @@ private:
     int currentZoom;
     int previousZoom;
     int maxZoom;
-    int currentMouseBtn;
     bool dragMap;
     QPoint dragMapStart;
     bool showGridCenter;
     bool showGridTiles;
+    int currentMouseBtn;
 
     // Right click menu
     QMenu menu;
